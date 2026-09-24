@@ -3,6 +3,7 @@ node_modules/
 out/
 .env*
 !.env.example
+**/.env.local
 *.log
 coverage/
 dist/
