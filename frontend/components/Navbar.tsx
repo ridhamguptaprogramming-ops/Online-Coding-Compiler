@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { createClient } from "../lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "../lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { Code2, LogOut, Trophy, User as UserIcon } from "lucide-react";
 
@@ -10,6 +10,8 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -19,6 +21,8 @@ export default function Navbar() {
   }, []);
 
   const signOut = async () => {
+    if (!isSupabaseConfigured()) return;
+
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "../../lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "../../lib/supabase/client";
 import toast from "react-hot-toast";
 
 export default function SignupPage() {
@@ -14,6 +14,11 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSupabaseConfigured()) {
+      toast.error("Authentication is not configured.");
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
@@ -35,6 +40,11 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignup = async () => {
+    if (!isSupabaseConfigured()) {
+      toast.error("Authentication is not configured.");
+      return;
+    }
+
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
