@@ -5,10 +5,24 @@ const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/submissions/mine"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
+  const isProtected = PROTECTED_PREFIXES.some((prefix) =>
+    request.nextUrl.pathname.startsWith(prefix)
+  );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey || !/^https?:\/\/[^\s]+$/.test(supabaseUrl)) {
+    if (isProtected) {
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
+    return response;
+  }
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -31,10 +45,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const isProtected = PROTECTED_PREFIXES.some((prefix) =>
-    request.nextUrl.pathname.startsWith(prefix)
-  );
 
   if (isProtected && !user) {
     const redirectUrl = new URL("/login", request.url);
