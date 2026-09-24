@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 
 export default function SignupPage() {
-  const supabase = createClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,6 +15,7 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const supabase = createClient();
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -35,6 +35,7 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignup = async () => {
+    const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

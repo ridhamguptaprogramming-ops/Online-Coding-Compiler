@@ -1,4 +1,4 @@
-// File: /Users/ridhamgupta805gmail.com/Downloads/codearena-phase1/frontend/app/problems/[slug]/page.tsx
+// File: /Users/ridhamgupta805gmail.com/Documents/Todo Assignment/Online-Coding-Compiler/frontend/app/problems/[slug]/page.tsx
 import * as entry from '../../../../../app/problems/[slug]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

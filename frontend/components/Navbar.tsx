@@ -7,18 +7,19 @@ import type { User } from "@supabase/supabase-js";
 import { Code2, LogOut, Trophy, User as UserIcon } from "lucide-react";
 
 export default function Navbar() {
-  const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
     return () => listener.subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   const signOut = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/";
   };
