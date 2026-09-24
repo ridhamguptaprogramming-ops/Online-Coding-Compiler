@@ -1,7 +1,9 @@
-import { createClient } from "../lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "../lib/supabase/server";
 import type { Problem } from "../types/database";
 
 export async function getProblems(): Promise<Problem[]> {
+  if (!isSupabaseConfigured()) return [];
+
   const supabase = createClient();
   const { data, error } = await supabase
     .from("problems")
@@ -18,6 +20,8 @@ export async function getProblems(): Promise<Problem[]> {
 }
 
 export async function getProblemBySlug(slug: string): Promise<Problem | null> {
+  if (!isSupabaseConfigured()) return null;
+
   const supabase = createClient();
   const { data, error } = await supabase
     .from("problems")
