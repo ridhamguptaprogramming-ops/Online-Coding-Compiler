@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import type { Problem } from "@/types/database";
+import { createClient } from "../lib/supabase/server";
+import type { Problem } from "../types/database";
 
 export async function getProblems(): Promise<Problem[]> {
   const supabase = createClient();

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getProblems } from "@/services/problems";
+import { getProblems } from "../../services/problems";
 
 const difficultyBadge: Record<string, string> = {
   easy: "badge-easy",

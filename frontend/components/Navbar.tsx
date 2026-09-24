@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "../lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { Code2, LogOut, Trophy, User as UserIcon } from "lucide-react";
 

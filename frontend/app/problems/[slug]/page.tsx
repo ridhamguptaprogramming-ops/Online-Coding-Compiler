@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProblemBySlug } from "@/services/problems";
+import { getProblemBySlug } from "../../../services/problems";
 
 const difficultyBadge: Record<string, string> = {
   easy: "badge-easy",
