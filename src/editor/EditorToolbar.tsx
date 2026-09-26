@@ -92,7 +92,7 @@ const EditorToolbar = (props: EditorToolbarProps) => {
             leftIcon={props.executing ? undefined : <Play class="w-3.5 h-3.5 fill-current" />}
             loading={props.executing}
           >
-            {props.executing ? `Running ${props.progress}%` : 'Run'}
+            {props.executing ? 'Running...' : 'Run'}
           </Button>
           <div class="w-px h-4 bg-border mx-2" />
           <Button 

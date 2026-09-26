@@ -1,4 +1,5 @@
 import { createSignal, createEffect, Show, onMount, onCleanup, For, Index } from 'solid-js';
+import type * as monaco from 'monaco-editor';
 import { executionService } from '../services/execution.service';
 import { storageService } from '../services/storage.service';
 import MonacoWrapper from '../editor/MonacoWrapper';
@@ -23,6 +24,7 @@ import { useTheme } from '../utils/theme-signal';
 
 const DEFAULT_CODES: Record<string, string> = {
   python: 'def main():\n    print("Welcome to CodeArena")\n\nif __name__ == "__main__":\n    main()',
+  javascript: 'console.log("Welcome to CodeArena");',
   cpp: '#include <iostream>\n\nint main() {\n    std::cout << "Performance redefined." << std::endl;\n    return 0;\n}',
   java: 'class Main {\n    public static void main(String[] args) {\n        System.out.println("Object oriented learning.");\n    }\n}',
   c: '#include <stdio.h>\n\nint main() {\n    printf("Classic C Sandbox.\\n");\n    return 0;\n}'
@@ -31,6 +33,7 @@ const DEFAULT_CODES: Record<string, string> = {
 const LANGUAGE_OPTIONS = [
   { value: 'java', label: 'Java', ext: '.java' },
   { value: 'python', label: 'Python 3', ext: '.py' },
+  { value: 'javascript', label: 'JavaScript', ext: '.js' },
   { value: 'cpp', label: 'C++', ext: '.cpp' },
   { value: 'c', label: 'C', ext: '.c' }
 ];
@@ -47,13 +50,28 @@ const EditorPage = () => {
   const [showSettings, setShowSettings] = createSignal(false);
   const [progress, setProgress] = createSignal(0);
   const [codeStats, setCodeStats] = createSignal({ lines: 0, words: 0 });
-  const [isCached, setIsCached] = createSignal(false);
+  const [executionStage, setExecutionStage] = createSignal('');
+  const [executionHistory, setExecutionHistory] = createSignal<any[]>(
+    (() => {
+      try {
+        return JSON.parse(sessionStorage.getItem('codearena_execution_history') || '[]');
+      } catch {
+        return [];
+      }
+    })()
+  );
+  let monacoEditor: monaco.editor.IStandaloneCodeEditor | undefined;
   const { uiTheme } = useTheme();
 
   const currentFile = () => files().find(f => f.id === activeFileId()) || files()[0];
 
   createEffect(() => storageService.saveFiles(files()));
   createEffect(() => storageService.saveFontSize(fontSize()));
+  createEffect(() => {
+    try {
+      sessionStorage.setItem('codearena_execution_history', JSON.stringify(executionHistory()));
+    } catch {}
+  });
   
 
 
@@ -80,25 +98,81 @@ const EditorPage = () => {
 
   const runCode = async () => {
     if (executing()) return;
+    const file = currentFile();
+    const fileId = file.id;
+    const sourceCode = monacoEditor?.getValue() ?? file.code;
+    const language = file.lang;
+    const standardInput = input();
+
+    setFiles(prev => prev.map(item => item.id === fileId ? {
+      ...item,
+      code: sourceCode,
+      output: '',
+      stderr: '',
+      compileError: '',
+      status: 'RUNNING',
+      executionTime: null,
+      exitCode: null,
+      memoryUsage: null,
+    } : item));
+
+    if (!sourceCode.trim()) {
+      setFiles(prev => prev.map(item => item.id === fileId ? {
+        ...item,
+        output: '',
+        stderr: 'Source code is empty. Add code before running.',
+        message: 'Source code is empty. Add code before running.',
+        status: 'SYSTEM_ERROR',
+      } : item));
+      setExecutionStage('Source code is empty');
+      return;
+    }
+
     setExecuting(true);
     setProgress(10);
-    setIsCached(false);
+    setExecutionStage('Preparing execution');
 
     try {
       const result = await executionService.execute(
-        currentFile().code,
-        currentFile().lang,
-        input(),
-        (p) => setProgress(p)
+        sourceCode,
+        language,
+        standardInput,
+        (p) => {
+          setProgress(p);
+          if (p >= 70 && p < 100) setExecutionStage('Running on execution service');
+          if (p >= 100) setExecutionStage('Completed');
+        }
       );
-      setFiles(prev => prev.map(f =>
-        f.id === activeFileId() ? { ...f, output: result.output, executionTime: result.executionTime } : f
-      ));
-      setIsCached(result.cached || false);
-    } catch (error: any) {
-      setFiles(prev => prev.map(f =>
-        f.id === activeFileId() ? { ...f, output: `❌ Error: ${error.message}` } : f
-      ));
+      setExecutionStage(result.status === 'ACCEPTED' ? 'Completed' : result.status.replace(/_/g, ' '));
+      setFiles(prev => prev.map(item => item.id === fileId ? {
+        ...item,
+        output: result.stdout,
+        stderr: result.stderr,
+        compileError: result.compileError,
+        status: result.status,
+        executionTime: result.executionTime,
+        exitCode: result.exitCode,
+        memoryUsage: result.memoryUsage,
+        message: result.message,
+      } : item));
+      const historyEntry = {
+        id: Date.now(),
+        timestamp: new Date().toLocaleTimeString(),
+        language,
+        sourceCode,
+        stdin: standardInput,
+        result,
+      };
+      setExecutionHistory(prev => [historyEntry, ...prev].slice(0, 20));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown execution error.';
+      setFiles(prev => prev.map(item => item.id === fileId ? {
+        ...item,
+        output: '',
+        stderr: message,
+        status: 'SYSTEM_ERROR',
+      } : item));
+      setExecutionStage('Execution failed');
     } finally {
       setExecuting(false);
       setTimeout(() => setProgress(0), 1000);
@@ -217,6 +291,7 @@ const EditorPage = () => {
                 onCodeChange={(code) => {
                   setFiles(prev => prev.map(f => f.id === activeFileId() ? { ...f, code } : f));
                 }}
+                onEditorReady={(editor) => { monacoEditor = editor; }}
               />
           </div>
           
@@ -234,7 +309,7 @@ const EditorPage = () => {
         </main>
 
         {/* Action Panel */}
-        <Show when={showSettings() || executing() || Boolean(currentFile()?.output)}>
+        <Show when={showSettings() || executing() || Boolean(currentFile()?.status)}>
            <aside class="w-96 border-l border-border bg-bg-secondary shrink-0 animate-in fade-in slide-in-from-right-4 duration-500">
               <ExecutionPanel
                 sidebar
@@ -243,13 +318,44 @@ const EditorPage = () => {
                 input={input()}
                 executing={executing()}
                 progress={progress()}
-                isCached={isCached()}
+                executionStage={executionStage()}
                 codeStats={codeStats()}
                 showSettings={showSettings()}
+                history={executionHistory()}
                 onLanguageChange={handleLanguageChange}
                 onInputChange={setInput}
                 onFontSizeChange={setFontSize}
-                onClearCache={() => executionService.clearCache()}
+                onClearOutput={() => {
+                  const fileId = activeFileId();
+                  setFiles(prev => prev.map(item => item.id === fileId ? {
+                    ...item,
+                    output: '',
+                    stderr: '',
+                    compileError: '',
+                    status: '',
+                    executionTime: null,
+                    exitCode: null,
+                    memoryUsage: null,
+                  } : item));
+                  setExecutionStage('');
+                }}
+                onSelectHistory={(entry) => {
+                  const fileId = activeFileId();
+                  setFiles(prev => prev.map(item => item.id === fileId ? {
+                    ...item,
+                    lang: entry.language,
+                    code: entry.sourceCode,
+                    output: entry.result.stdout,
+                    stderr: entry.result.stderr,
+                    compileError: entry.result.compileError,
+                    status: entry.result.status,
+                    executionTime: entry.result.executionTime,
+                    exitCode: entry.result.exitCode,
+                    memoryUsage: entry.result.memoryUsage,
+                    message: entry.result.message,
+                  } : item));
+                  setExecutionStage('Completed');
+                }}
                 onVisualize={visualizeCode}
               />
            </aside>

@@ -1,158 +1,166 @@
-// Execution Service - Handles fast code execution via external API
+export type ExecutionStatus =
+  | 'ACCEPTED'
+  | 'COMPILATION_ERROR'
+  | 'RUNTIME_ERROR'
+  | 'TIME_LIMIT_EXCEEDED'
+  | 'SYSTEM_ERROR';
+
 export interface ExecutionResult {
-  output: string;
-  executionTime?: string;
-  cached?: boolean;
-  error?: boolean;
+  status: ExecutionStatus;
+  stdout: string;
+  stderr: string;
+  compileError: string;
+  exitCode: number | null;
+  executionTime: string;
+  memoryUsage: string | null;
+  message: string;
 }
 
+type ProgressHandler = (progress: number) => void;
+
+const LANGUAGE_MAP: Record<string, string> = {
+  c: 'c',
+  cpp: 'cpp',
+  java: 'java',
+  javascript: 'javascript',
+  python: 'python3',
+};
+
+const getApiUrl = () => import.meta.env.VITE_API_URL?.trim();
+
+const errorResult = (
+  status: ExecutionStatus,
+  message: string,
+  stderr = '',
+  compileError = '',
+): ExecutionResult => ({
+  status,
+  stdout: '',
+  stderr,
+  compileError,
+  exitCode: null,
+  executionTime: '0.00',
+  memoryUsage: null,
+  message,
+});
+
 class ExecutionService {
-  private cache = new Map<string, { result: string; timestamp: number; executionTime: string }>();
-  private activeRequests = new Map<string, AbortController>();
-  private inFlight = new Map<string, Promise<ExecutionResult>>();
-  private connectionWarmed = false;
-  private cacheDuration = 12000;
-  private warmupDelay = 500;
-  private apiUrl = "https://code-box.onrender.com/api/v1/submit";
+  private readonly timeoutMs = 30000;
 
-  constructor() {
-    if (typeof window !== 'undefined') {
-      setTimeout(() => this.warmConnection(), this.warmupDelay);
-    }
-  }
-
-  private getCacheKey(code: string, lang: string, input: string): string {
-    return `${lang}:${code.length}:${code.slice(0, 120).replace(/\s/g, '')}:${input || ''}`;
-  }
-
-  private preprocessCode(code: string, lang: string): string {
-    if (lang !== 'java') return code;
-    const normalized = (code || '').replace(/\r\n/g, '\n').trim();
-    if (!normalized) return code;
-
-    // Most online Java runners expect class Main as the entrypoint.
-    if (/public\s+class\s+Main\b/.test(normalized) || /class\s+Main\b/.test(normalized)) {
-      return normalized;
+  async execute(
+    sourceCode: string,
+    language: string,
+    stdin: string,
+    onProgress?: ProgressHandler,
+  ): Promise<ExecutionResult> {
+    const normalizedLanguage = LANGUAGE_MAP[language];
+    if (!normalizedLanguage) {
+      return errorResult('SYSTEM_ERROR', `Unsupported language: ${language}`);
     }
 
-    const withPublicClass = normalized.replace(/public\s+class\s+([A-Za-z_]\w*)/m, 'public class Main');
-    if (withPublicClass !== normalized) return withPublicClass;
-
-    return normalized.replace(/class\s+([A-Za-z_]\w*)/m, 'class Main');
-  }
-
-  private getTimeoutForLang(lang: string): number {
-    if (lang === 'java') return 25000;
-    if (lang === 'cpp' || lang === 'c') return 22000;
-    return 18000;
-  }
-
-  async warmConnection() {
-    if (this.connectionWarmed || typeof window === 'undefined') return;
-    this.connectionWarmed = true;
-    const warmups = [
-      { src: "print('ready')", lang: "python3", stdin: "" },
-      { src: "class Main { public static void main(String[] args){ System.out.print(1); } }", lang: "java", stdin: "" }
-    ];
-
-    await Promise.allSettled(warmups.map((payload) => fetch(this.apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      keepalive: true,
-    })));
-  }
-
-  async execute(code: string, lang: string, input: string, onProgress?: (progress: number) => void): Promise<ExecutionResult> {
-    const normalizedCode = this.preprocessCode(code, lang);
-    const cacheKey = this.getCacheKey(normalizedCode, lang, input);
-    const cached = this.cache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < this.cacheDuration) {
-      if (onProgress) onProgress(100);
-      return { output: cached.result, cached: true, executionTime: cached.executionTime };
+    const apiUrl = getApiUrl();
+    if (!apiUrl) {
+      return errorResult(
+        'SYSTEM_ERROR',
+        'Execution service unavailable. Configure VITE_API_URL and try again.',
+      );
     }
 
-    if (this.inFlight.has(cacheKey)) {
-      return this.inFlight.get(cacheKey)!;
-    }
-
-    if (this.activeRequests.has(lang)) {
-      this.activeRequests.get(lang)?.abort();
-    }
-
+    const startedAt = performance.now();
     const controller = new AbortController();
-    this.activeRequests.set(lang, controller);
+    const timeoutId = window.setTimeout(() => controller.abort(), this.timeoutMs);
+    onProgress?.(10);
 
-    const langMap: Record<string, string> = {
-      'python': 'python3',
-      'javascript': 'nodejs',
-      'typescript': 'typescript',
-      'java': 'java',
-      'cpp': 'cpp',
-      'c': 'c'
-    };
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sourceCode,
+          language: normalizedLanguage,
+          stdin,
+          executionMode: 'RUN',
+          src: sourceCode,
+          lang: normalizedLanguage,
+        }),
+        signal: controller.signal,
+      });
+      onProgress?.(70);
 
-    const apiLang = langMap[lang] || lang;
-    const startTime = performance.now();
-    const executePromise = (async (): Promise<ExecutionResult> => {
-      try {
-        if (onProgress) {
-          onProgress(20);
-          setTimeout(() => onProgress(45), 80);
-          setTimeout(() => onProgress(70), 250);
-        }
-
-        const timeoutId = setTimeout(() => controller.abort(), this.getTimeoutForLang(lang));
-
-        const response = await fetch(this.apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify({
-            src: normalizedCode,
-            lang: apiLang,
-            stdin: input || "",
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const result = await response.json();
-        const output = result.data?.output || result.data?.error || result.output || "No output";
-
-        if (onProgress) onProgress(100);
-        const executionTime = ((performance.now() - startTime) / 1000).toFixed(2);
-
-        if (!output.includes('Error') && !output.includes('timeout')) {
-          this.cache.set(cacheKey, { result: output, timestamp: Date.now(), executionTime });
-          if (this.cache.size > 50) {
-            const firstKey = this.cache.keys().next().value;
-            if (firstKey) this.cache.delete(firstKey);
-          }
-        }
-
-        return { output, executionTime, cached: false };
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          return { output: `❌ Timeout after ${Math.round(this.getTimeoutForLang(lang) / 1000)}s`, executionTime: "0.00", error: true };
-        }
-        return { output: `❌ ${error.message}`, executionTime: "0.00", error: true };
-      } finally {
-        this.activeRequests.delete(lang);
-        this.inFlight.delete(cacheKey);
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(detail || `Execution service returned HTTP ${response.status}`);
       }
-    })();
 
-    this.inFlight.set(cacheKey, executePromise);
-    return executePromise;
+      const body = await response.json();
+      const data = body?.data ?? body;
+      const stdout = typeof data?.stdout === 'string'
+        ? data.stdout
+        : typeof data?.output === 'string'
+          ? data.output
+          : typeof body?.stdout === 'string' ? body.stdout : typeof body?.output === 'string' ? body.output : '';
+      const stderr = typeof data?.stderr === 'string'
+        ? data.stderr
+        : typeof data?.error === 'string'
+          ? data.error
+          : typeof body?.stderr === 'string' ? body.stderr : typeof body?.error === 'string' ? body.error : '';
+      const backendStatus = String(data?.status || body?.status || '').toUpperCase();
+      const reportedCompileError = typeof data?.compileError === 'string'
+        ? data.compileError
+        : typeof body?.compileError === 'string' ? body.compileError : '';
+      const compileFailure = Boolean(reportedCompileError) || backendStatus === 'COMPILATION_ERROR' || backendStatus === 'FAILED';
+      const timeoutFailure = backendStatus === 'TIME_LIMIT_EXCEEDED';
+      const explicitFailure = body?.success === false || compileFailure || timeoutFailure || backendStatus === 'RUNTIME_ERROR' || backendStatus === 'SYSTEM_ERROR';
+
+      if (explicitFailure || stderr) {
+        const compileError = compileFailure
+          ? reportedCompileError || stderr || data?.message || 'Compilation failed.'
+          : '';
+        const status: ExecutionStatus = compileFailure
+          ? 'COMPILATION_ERROR'
+          : timeoutFailure ? 'TIME_LIMIT_EXCEEDED' : backendStatus === 'SYSTEM_ERROR' ? 'SYSTEM_ERROR' : 'RUNTIME_ERROR';
+        onProgress?.(100);
+        return {
+          status,
+          stdout,
+          stderr,
+          compileError,
+          exitCode: typeof data?.exitCode === 'number' ? data.exitCode : null,
+          executionTime: ((performance.now() - startedAt) / 1000).toFixed(2),
+          memoryUsage: typeof data?.memoryUsage === 'string' || typeof data?.memoryUsage === 'number' ? String(data.memoryUsage) : null,
+          message: compileError ? 'Compilation failed.' : data?.message || (timeoutFailure ? 'Execution exceeded the time limit.' : body?.message || 'Program reported an error.'),
+        };
+      }
+
+      if (typeof data?.stdout !== 'string' && typeof data?.output !== 'string' && typeof body?.stdout !== 'string' && typeof body?.output !== 'string') {
+        return errorResult('SYSTEM_ERROR', body?.message || 'Execution service returned an invalid response.');
+      }
+
+      onProgress?.(100);
+      return {
+        status: 'ACCEPTED',
+        stdout,
+        stderr,
+        compileError: '',
+        exitCode: typeof data?.exitCode === 'number' ? data.exitCode : 0,
+        executionTime: ((performance.now() - startedAt) / 1000).toFixed(2),
+        memoryUsage: typeof data?.memoryUsage === 'string' || typeof data?.memoryUsage === 'number' ? String(data.memoryUsage) : null,
+        message: stdout ? 'Execution completed.' : 'Program executed successfully with no output.',
+      };
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return errorResult('TIME_LIMIT_EXCEEDED', 'Execution timed out. The execution service did not respond within 30 seconds.');
+      }
+      const message = error instanceof Error ? error.message : 'Unknown execution service error.';
+      const unavailable = error instanceof TypeError || /failed to fetch|networkerror/i.test(message);
+      return errorResult('SYSTEM_ERROR', unavailable ? 'Execution service unavailable. Check the service URL and network, then try again.' : message);
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
-
-  clearCache() { this.cache.clear(); }
 }
 
 export const executionService = new ExecutionService();

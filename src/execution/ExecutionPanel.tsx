@@ -1,16 +1,15 @@
-import { For, Show, JSX } from 'solid-js';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 import { 
   Clock, 
   Terminal, 
   Copy, 
-  Download, 
   Tv, 
   Settings2,
   AlertCircle,
   Zap,
-  Trash2
+  Trash2,
+  History
 } from 'lucide-solid';
-import { codeArenaThemes } from '../utils/themes';
 import Button from '../ui/Button';
 import { cn } from '../utils/cn';
 
@@ -20,27 +19,38 @@ interface ExecutionPanelProps {
   input: string;
   executing: boolean;
   progress: number;
-  isCached: boolean;
+  executionStage: string;
   codeStats: { lines: number; words: number };
   showSettings: boolean;
+  history: any[];
   onLanguageChange: (lang: string) => void;
   onInputChange: (input: string) => void;
   onFontSizeChange: (size: number) => void;
-  onClearCache: () => void;
+  onClearOutput: () => void;
+  onSelectHistory: (entry: any) => void;
   onVisualize: () => void;
   sidebar?: boolean;
 }
 
 const ExecutionPanel = (props: ExecutionPanelProps) => {
+  const [activeTab, setActiveTab] = createSignal('output');
+
+  createEffect(() => {
+    if (props.executing) setActiveTab('output');
+  });
+
   const LANGUAGE_OPTIONS = [
     { value: 'java', label: 'Java' },
     { value: 'python', label: 'Python 3' },
+    { value: 'javascript', label: 'JavaScript' },
     { value: 'cpp', label: 'C++' },
     { value: 'c', label: 'C' }
   ];
 
   const copyOutput = async () => {
-    const output = props.currentFile?.output;
+    const output = [props.currentFile?.output, props.currentFile?.compileError || props.currentFile?.stderr]
+      .filter(Boolean)
+      .join('\n');
     if (!output) return;
     try {
       await navigator.clipboard.writeText(output);
@@ -70,8 +80,8 @@ const ExecutionPanel = (props: ExecutionPanelProps) => {
                   class="w-full accent-accent-blue h-1.5 bg-border rounded-full appearance-none cursor-pointer"
                 />
               </div>
-              <Button variant="outline" size="sm" class="w-full text-[10px] font-bold uppercase tracking-wider" onClick={props.onClearCache} leftIcon={<Trash2 class="w-3.5 h-3.5" />}>
-                Reset Execution Cache
+              <Button variant="outline" size="sm" class="w-full text-[10px] font-bold uppercase tracking-wider" onClick={props.onClearOutput} leftIcon={<Trash2 class="w-3.5 h-3.5" />}>
+                Clear Execution Output
               </Button>
             </div>
           </section>
@@ -131,9 +141,6 @@ const ExecutionPanel = (props: ExecutionPanelProps) => {
                     <span class="text-brand-secondary flex items-center gap-1.5">
                       <Clock class="w-3.5 h-3.5" /> {props.currentFile.executionTime}s
                     </span>
-                    <Show when={props.isCached}>
-                      <span class="text-accent-blue bg-accent-blue/10 px-2 py-0.5 rounded-full border border-accent-blue/20 tracking-widest">CACHED</span>
-                    </Show>
                   </Show>
                 </div>
               }>
@@ -148,29 +155,85 @@ const ExecutionPanel = (props: ExecutionPanelProps) => {
                 <Button variant="ghost" size="icon" class="h-8 w-8" onClick={copyOutput}>
                   <Copy class="w-4 h-4" />
                 </Button>
+                <Button variant="ghost" size="icon" class="h-8 w-8" onClick={props.onClearOutput}>
+                  <Trash2 class="w-4 h-4" />
+                </Button>
                 <Button variant="ghost" size="icon" class="h-8 w-8" onClick={props.onVisualize}>
                   <Tv class="w-4 h-4 text-accent-blue" />
                 </Button>
               </div>
             </div>
 
+            <div class="flex border-b border-border text-[10px] font-bold uppercase tracking-wider">
+              <For each={[
+                { id: 'output', label: 'Output' },
+                { id: 'errors', label: 'Errors' },
+                { id: 'details', label: 'Details' },
+                { id: 'history', label: 'History' },
+              ]}>
+                {(tab) => <button
+                  class={cn('px-4 py-2.5 border-b-2 transition-colors', activeTab() === tab.id ? 'border-accent-blue text-foreground' : 'border-transparent text-brand-secondary hover:text-foreground')}
+                  onClick={() => setActiveTab(tab.id)}
+                >{tab.label}{tab.id === 'history' ? ` (${props.history.length})` : ''}</button>}
+              </For>
+            </div>
+
             <div class="flex-1 p-5 overflow-auto scrollbar-thin">
-              <Show when={props.executing || props.currentFile?.output} fallback={
-                <div class="h-full flex flex-col items-center justify-center text-brand-secondary gap-3 opacity-30">
-                  <Terminal class="w-10 h-10" />
-                  <span class="text-[10px] uppercase tracking-[0.2em] font-black text-center leading-loose">
-                    Ready to compile<br/>Press Run Command
-                  </span>
-                </div>
-              }>
-                <pre class="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
-                  <Show when={props.executing} fallback={props.currentFile?.output}>
-                    <span class="flex items-center gap-3 text-accent-blue font-bold animate-pulse">
-                      <div class="w-2 h-2 rounded-full bg-current" />
-                      Allocating resources and executing...
+              <Show when={activeTab() === 'output'}>
+                <Show when={props.executing || props.currentFile?.status} fallback={
+                  <div class="h-full flex flex-col items-center justify-center text-brand-secondary gap-3 opacity-30">
+                    <Terminal class="w-10 h-10" />
+                    <span class="text-[10px] uppercase tracking-[0.2em] font-black text-center leading-loose">
+                      Ready to compile<br/>Press Run Command
                     </span>
-                  </Show>
-                </pre>
+                  </div>
+                }>
+                  <pre class="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
+                    <Show when={props.executing} fallback={props.currentFile?.output || props.currentFile?.message || 'Program executed successfully with no output.'}>
+                      <span class="flex items-center gap-3 text-accent-blue font-bold animate-pulse">
+                        <div class="w-2 h-2 rounded-full bg-current" />
+                        {props.executionStage || 'Preparing execution...'}
+                      </span>
+                    </Show>
+                  </pre>
+                </Show>
+              </Show>
+
+              <Show when={activeTab() === 'errors'}>
+                <Show when={props.currentFile?.compileError || props.currentFile?.stderr} fallback={<p class="text-xs text-brand-secondary">No errors reported.</p>}>
+                  <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-red-400">
+                      {props.currentFile?.compileError ? 'Compilation Error' : 'Runtime Error'}
+                    </h4>
+                    <pre class="font-mono text-[13px] leading-relaxed text-red-300 whitespace-pre-wrap">{props.currentFile?.compileError || props.currentFile?.stderr}</pre>
+                  </div>
+                </Show>
+              </Show>
+
+              <Show when={activeTab() === 'details'}>
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                  <dt class="text-brand-secondary">Status</dt><dd>{props.currentFile?.status || 'Idle'}</dd>
+                  <dt class="text-brand-secondary">Execution Time</dt><dd>{props.currentFile?.executionTime ? `${props.currentFile.executionTime}s` : 'Not available'}</dd>
+                  <dt class="text-brand-secondary">Memory Usage</dt><dd>{props.currentFile?.memoryUsage || 'Not reported by execution service'}</dd>
+                  <dt class="text-brand-secondary">Exit Code</dt><dd>{props.currentFile?.exitCode ?? 'Not reported by execution service'}</dd>
+                  <dt class="text-brand-secondary">Language</dt><dd>{props.currentFile?.lang || 'Unknown'}</dd>
+                </dl>
+              </Show>
+
+              <Show when={activeTab() === 'history'}>
+                <Show when={props.history.length} fallback={<p class="text-xs text-brand-secondary">No executions in this session.</p>}>
+                  <div class="space-y-1">
+                    <For each={props.history}>
+                      {(entry) => <button
+                        class="w-full flex items-center justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-foreground/5"
+                        onClick={() => props.onSelectHistory(entry)}
+                      >
+                        <span class="flex min-w-0 items-center gap-2 truncate text-xs"><History class="h-3.5 w-3.5 shrink-0 text-brand-secondary" />{entry.timestamp} · {entry.language}</span>
+                        <span class="shrink-0 text-[10px] text-brand-secondary">{entry.result.status} · {entry.result.executionTime}s</span>
+                      </button>}
+                    </For>
+                  </div>
+                </Show>
               </Show>
             </div>
           </div>
