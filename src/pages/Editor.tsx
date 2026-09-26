@@ -1,6 +1,6 @@
 import { createSignal, createEffect, Show, onMount, onCleanup, For, Index } from 'solid-js';
 import type * as monaco from 'monaco-editor';
-import { executionService } from '../services/execution.service';
+import { executionService } from '../services/execution';
 import { storageService } from '../services/storage.service';
 import MonacoWrapper from '../editor/MonacoWrapper';
 import EditorToolbar from '../editor/EditorToolbar';

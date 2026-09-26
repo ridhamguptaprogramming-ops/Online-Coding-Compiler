@@ -1,352 +1,130 @@
 import { A } from '@solidjs/router';
+import { createSignal, For, onCleanup, onMount } from 'solid-js';
+import { Activity, ArrowRight, Braces, Check, ChevronRight, Code2, Command, Cpu, GitBranch, Github, GraduationCap, Layers3, LockKeyhole, Play, Puzzle, ShieldCheck, Sparkles, Terminal, Timer, Trophy, Users, Zap } from 'lucide-solid';
 import Navbar from '../ui/Navbar';
-import {
-  Zap,
-  Code2,
-  Play,
-  Layers,
-  ArrowRight,
-  Github,
-  Terminal,
-  Cpu,
-  Globe,
-  Monitor,
-  Sparkles,
-  Search,
-  BookOpen,
-  Layout,
-  Command,
-  Cloud,
-  Sun,
-  Moon,
-  MoveRight,
-  ChevronRight,
-  Save,
-  Share2,
-  Shield,
-  GitBranch,
-  Palette
-} from 'lucide-solid';
-import { createSignal, onMount, onCleanup, For, Show, createEffect } from 'solid-js';
-import { Motion } from 'solid-motionone';
 import Button from '../ui/Button';
 import { cn } from '../utils/cn';
-import { storageService } from '../services/storage.service';
 
-const Landing = () => {
-  const [scrollY, setScrollY] = createSignal(0);
+const executionSteps = ['Code written', 'Queued', 'Compiling', 'Executing', 'Evaluating', 'Result'];
+const architecture = [
+  { title: 'Monaco Editor', detail: 'Source code & stdin', icon: Code2 },
+  { title: 'CodeArena API', detail: 'Request validation', icon: Braces },
+  { title: 'Execution Queue', detail: 'Job dispatch', icon: Layers3 },
+  { title: 'Worker & Runtime', detail: 'Compiler process', icon: Cpu },
+  { title: 'Result', detail: 'Output & status', icon: Activity },
+];
+const showcase = [
+  { icon: Code2, title: 'Online Compiler', body: 'Write and run C++, C, Java, Python and JavaScript from your browser.' },
+  { icon: Puzzle, title: 'Coding Problems', body: 'Build algorithms and data structures skills with focused challenges.' },
+  { icon: ShieldCheck, title: 'Execution Service', body: 'Send programs to the configured execution API and inspect the response.' },
+  { icon: Timer, title: 'Execution Details', body: 'Review program output, errors, timing and available runtime metadata.' },
+  { icon: Sparkles, title: 'AI Code Review', body: 'A preview of code analysis for quality, complexity and possible improvements.' },
+  { icon: Trophy, title: 'Contests', body: 'A product concept for timed assessments and competitive practice.' },
+];
+const problems = [
+  { name: 'Two Sum', level: 'Easy', topics: 'Arrays · Hash Map', rate: 'Demo · 68%' },
+  { name: 'Longest Substring', level: 'Medium', topics: 'Strings · Sliding Window', rate: 'Demo · 42%' },
+  { name: 'Binary Tree Traversal', level: 'Medium', topics: 'Trees · BFS', rate: 'Demo · 57%' },
+  { name: 'Dynamic Programming Challenge', level: 'Hard', topics: 'DP · Optimization', rate: 'Demo · 31%' },
+];
+const languages = [
+  { name: 'C++', ext: '.cpp', color: 'text-sky-400', letter: 'C+' },
+  { name: 'Python', ext: '.py', color: 'text-yellow-400', letter: 'Py' },
+  { name: 'Java', ext: '.java', color: 'text-orange-400', letter: 'J' },
+  { name: 'C', ext: '.c', color: 'text-blue-400', letter: 'C' },
+  { name: 'JavaScript', ext: '.js', color: 'text-amber-300', letter: 'JS' },
+];
+const featureGrid = [
+  { icon: Zap, title: 'Run code in your browser', text: 'Send code to the configured execution service and inspect its response.', large: true },
+  { icon: Code2, title: 'Five languages', text: 'C, C++, Java, Python and JavaScript.', large: false },
+  { icon: Terminal, title: 'Monaco editor', text: 'A familiar editor with syntax-aware editing.', large: false },
+  { icon: Command, title: 'Make it yours', text: 'Switch between light and dark workspace themes.', large: false },
+  { icon: GitBranch, title: 'Local workspace', text: 'Keep your editor work available in this browser.', large: false },
+  { icon: Activity, title: 'Execution visualizer', text: 'Explore program flow with the existing visualizer.', large: true },
+];
 
+const SectionTitle = (props: { eyebrow: string; title: string; body?: string }) => (
+  <div class="mx-auto mb-12 max-w-2xl text-center">
+    <div class="mb-4 text-xs font-bold uppercase tracking-[.22em] text-accent-blue">{props.eyebrow}</div>
+    <h2 class="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">{props.title}</h2>
+    {props.body && <p class="mt-4 text-base leading-7 text-brand-secondary sm:text-lg">{props.body}</p>}
+  </div>
+);
+
+const CodePreview = () => {
+  const [phase, setPhase] = createSignal(0);
   onMount(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll);
-    onCleanup(() => window.removeEventListener('scroll', handleScroll));
+    const timer = window.setInterval(() => setPhase((value) => (value + 1) % 4), 2800);
+    onCleanup(() => window.clearInterval(timer));
   });
-
-  const features = [
-    {
-      icon: Code2,
-      title: 'Multi-Language Support',
-      description: 'Code in Python, JavaScript, Java, C++, C, and more. Full syntax highlighting and IntelliSense for each language.',
-      color: 'bg-blue-500/10 text-blue-500'
-    },
-    {
-      icon: Zap,
-      title: 'Instant Execution',
-      description: 'Run your code instantly with real-time output. Test algorithms, debug code, and see results immediately.',
-      color: 'bg-emerald-500/10 text-emerald-500'
-    },
-    {
-      icon: Palette,
-      title: 'Multiple Themes',
-      description: 'Choose from beautiful dark and light themes. Customize your coding environment to match your style.',
-      color: 'bg-purple-500/10 text-purple-500'
-    },
-    {
-      icon: Save,
-      title: 'Save & Download',
-      description: 'Save your code locally or download it as files. Never lose your work with automatic local storage.',
-      color: 'bg-orange-500/10 text-orange-500'
-    },
-    {
-      icon: Share2,
-      title: 'Easy Sharing',
-      description: 'Copy code with one click. Share your solutions quickly with teammates and collaborators.',
-      color: 'bg-pink-500/10 text-pink-500'
-    },
-    {
-      icon: Cloud,
-      title: 'Cloud Sync',
-      description: 'Access your code from anywhere. Your projects are automatically saved and synced across devices.',
-      color: 'bg-cyan-500/10 text-cyan-500'
-    },
-    {
-      icon: Shield,
-      title: 'Secure & Private',
-      description: 'Your code stays private. We never store or share your code without your explicit permission.',
-      color: 'bg-green-500/10 text-green-500'
-    },
-    {
-      icon: GitBranch,
-      title: 'Version Control',
-      description: 'Track changes and manage multiple file versions. Work with confidence knowing your history is saved.',
-      color: 'bg-indigo-500/10 text-indigo-500'
-    }
-  ];
-
-  const languages = [
-    { id: 'python', name: 'Python', ext: '.py', icon: 'P', color: 'bg-blue-500' },
-    { id: 'java', name: 'Java', ext: '.java', icon: 'J', color: 'bg-orange-500' },
-    { id: 'cpp', name: 'C++', ext: '.cpp', icon: 'C', color: 'bg-blue-600' },
-    { id: 'c', name: 'C', ext: '.c', icon: 'C', color: 'bg-blue-400' },
-  ];
-
+  const phaseLabels = ['Preview · Ready', 'Preview · Compiling', 'Preview · Running', 'Preview · Complete'];
   return (
-    <div class="relative min-h-screen transition-colors duration-500">
-      {/* Background System */}
-      <div class="mesh-bg" />
-      <div class="noise" />
-
-      {/* Navbar */}
-      <Navbar />
-
-      {/* Hero Section */}
-      <section class="max-w-7xl mx-auto px-6 pt-32 pb-20 text-center">
-        <Motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          {/* <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue text-[11px] font-bold tracking-widest uppercase mb-8">
-            <Sparkles class="w-3 h-3" />
-            <span>Now with Multi-Core Visualization & Premium Online Compiler</span>
-          </div> */}
-
-          <h1 class="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-8">
-            Code, Compile, Execute <br />
-            <span class="text-accent-gradient">and Visualize.</span>
-          </h1>
-
-          <p class="text-lg md:text-xl text-brand-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-            Innovative online compiler with multi-language support, beautiful themes, and powerful features.
-          </p>
-
-          <div class="flex flex-wrap justify-center gap-4">
-            <A href="/editor">
-              <Button variant="primary" size="xl" rightIcon={<MoveRight class="w-5 h-5" />}>
-                Start Coding Free
-              </Button>
-            </A>
-            <Button variant="secondary" size="xl" leftIcon={<Github class="w-5 h-5" />}>
-              GitHub
-            </Button>
-          </div>
-        </Motion.div>
-
-        {/* Hero Illustration - Terminal Mockup */}
-        <Motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 1, delay: 0.2 }}
-          class="mt-20 relative mx-auto max-w-5xl group"
-        >
-          {/* Enhanced Glow Effect */}
-          <div class="absolute -inset-10 bg-accent-blue/20 blur-[120px] opacity-40 rounded-[5rem] transition-all duration-700 group-hover:bg-accent-purple/20 group-hover:blur-[150px]" />
-
-          <div class="relative rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl bg-[#0b0e14] backdrop-blur-2xl transition-transform duration-700 hover:scale-[1.02] hover:-rotate-1">
-            {/* Glossy Overlay */}
-            <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
-
-            {/* Terminal Header */}
-            <div class="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-white/5 backdrop-blur-md">
-              <div class="flex gap-2.5">
-                <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-[0_0_10px_rgba(255,95,86,0.3)] transition-transform hover:scale-125 cursor-pointer" />
-                <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-[0_0_10px_rgba(255,189,46,0.3)] transition-transform hover:scale-125 cursor-pointer" />
-                <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-[0_0_10px_rgba(39,201,63,0.3)] transition-transform hover:scale-125 cursor-pointer" />
-              </div>
-              <div class="text-[10px] font-mono text-white/40 uppercase tracking-[0.3em] flex items-center gap-3 font-black">
-                <div class="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
-                TERMINAL / LOGIC.PY
-              </div>
-              <div class="w-16 h-1 bg-transparent" />
-            </div>
-
-            <div class="p-10 md:p-14 text-left font-mono text-sm md:text-base leading-[1.8] overflow-x-auto relative bg-[#0b0e14]">
-              <div class="flex gap-8 mb-4 animate-in fade-in slide-in-from-left-4 duration-500 delay-100">
-                <span class="text-white/20 select-none text-right w-6 font-bold">1</span>
-                <span><span class="text-[#60a5fa]">def</span> <span class="text-white font-medium">calculate_flow</span><span class="text-white/80">(input_data):</span></span>
-              </div>
-              <div class="flex gap-8 mb-4 animate-in fade-in slide-in-from-left-4 duration-500 delay-200">
-                <span class="text-white/20 select-none text-right w-6 font-bold">2</span>
-                <span class="ml-6"><span class="text-[#4b5563] italic"># Analyzing complexity mapping in real-time</span></span>
-              </div>
-              <div class="flex gap-8 mb-4 animate-in fade-in slide-in-from-left-4 duration-500 delay-300">
-                <span class="text-white/20 select-none text-right w-6 font-bold">3</span>
-                <span class="ml-6"><span class="text-white/90">result = [x ** </span><span class="text-[#34d399]">2</span><span class="text-[#60a5fa]"> for</span><span class="text-white/90"> x </span><span class="text-[#60a5fa]">in</span><span class="text-white/90"> input_data]</span></span>
-              </div>
-              <div class="flex gap-8 mb-4 animate-in fade-in slide-in-from-left-4 duration-500 delay-400">
-                <span class="text-white/20 select-none text-right w-6 font-bold">4</span>
-                <span class="ml-6"><span class="text-[#60a5fa]">return</span><span class="text-white/90"> result</span></span>
-              </div>
-              <div class="flex gap-8 mt-12 animate-in fade-in slide-in-from-left-4 duration-500 delay-500">
-                <span class="text-white/20 select-none text-right w-6 font-bold">5</span>
-                <span><span class="text-[#60a5fa]">print</span><span class="text-white/80">(</span><span class="text-white">calculate_flow</span><span class="text-white/80">([</span><span class="text-[#34d399]">1, 2, 3, 4, 5</span><span class="text-white/80">]))</span></span>
-              </div>
-
-              {/* Execution Matrix - Floating Glass Card */}
-              <div class="mt-16 p-8 rounded-[2rem] bg-white/[0.03] border border-white/10 backdrop-blur-xl relative group-hover:bg-white/[0.05] transition-all duration-500 shadow-2xl overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-r from-accent-blue/5 to-transparent opacity-50" />
-                <div class="relative z-10">
-                  <div class="flex items-center justify-between mb-6">
-                    <span class="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">Execution Matrix</span>
-                    <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                      <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                      <span class="text-[10px] text-emerald-400 font-black tracking-widest">ONLINE</span>
-                    </div>
-                  </div>
-                  <div class="text-[#c3e88d] text-base md:text-lg font-bold tracking-tight mb-3">
-                    <span class="text-white/20 mr-4 select-none">{">>>"}</span>
-                    [1, 4, 9, 16, 25]
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <div class="h-px flex-1 bg-white/5" />
-                    <span class="text-white/20 text-[10px] font-bold italic tracking-widest uppercase">Done in 14ms (0.014s)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Internal Shadow for Depth */}
-            <div class="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] pointer-events-none" />
-          </div>
-        </Motion.div>
-      </section>
-
-      {/* Features Bento */}
-      <section id="features" class="max-w-7xl mx-auto px-6 py-32 border-t border-border">
-        <div class="text-center mb-20 space-y-4">
-          <h2 class="text-4xl md:text-5xl font-bold tracking-tight">Powerful Features</h2>
-          <p class="text-lg text-brand-secondary max-w-xl mx-auto">
-            Everything you need to code efficiently and effectively
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <For each={features}>
-            {(f) => (
-              <div class="bento-card group p-6 hover:-translate-y-2 transition-transform duration-500">
-                <div class={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110", f.color)}>
-                  <f.icon class="w-6 h-6" />
-                </div>
-                <h3 class="text-lg font-bold mb-3">{f.title}</h3>
-                <p class="text-brand-secondary leading-relaxed text-sm font-medium">
-                  {f.description}
-                </p>
-              </div>
-            )}
-          </For>
-        </div>
-      </section>
-
-      {/* Supported Languages */}
-      <section id="languages" class="max-w-7xl mx-auto px-6 py-32 border-t border-border bg-bg-tertiary/50 relative overflow-hidden">
-        <div class="absolute inset-0 bg-accent-blue/5 blur-[100px] rounded-[100%]" />
-        <div class="text-center mb-20 space-y-4 relative z-10">
-          <h2 class="text-4xl md:text-5xl font-bold tracking-tight">Supported Languages</h2>
-          <p class="text-lg text-brand-secondary max-w-xl mx-auto">
-            Write code in your favorite programming language
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
-          <For each={languages}>
-            {(l) => (
-              <div class="group relative overflow-hidden rounded-[2rem] border border-border bg-bg-secondary p-8 transition-all duration-500 hover:shadow-premium hover:-translate-y-2 cursor-pointer">
-                <div class={cn("absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl transition-opacity duration-500 group-hover:opacity-30", l.color)} />
-                <div class="flex flex-col items-start gap-8">
-                  <div class={cn("w-16 h-16 shrink-0 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3", l.color)}>
-                    {l.icon}
-                  </div>
-                  <div class="w-full">
-                    <h3 class="text-2xl font-bold text-foreground mb-3 flex items-center justify-between">
-                      {l.name}
-                      <ArrowRight class="w-5 h-5 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-brand-secondary" />
-                    </h3>
-                    <span class="inline-flex text-xs font-mono font-bold text-brand-secondary bg-bg-tertiary px-4 py-1.5 rounded-full border border-border group-hover:border-foreground/20 transition-colors uppercase tracking-widest">{l.ext}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </For>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section class="max-w-4xl mx-auto px-6 py-32 text-center border-t border-border">
-        <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-6">Ready to Start Coding?</h2>
-        <p class="text-lg text-brand-secondary mb-10">
-          Join thousands of developers who trust CodeArena for their coding needs
-        </p>
-        <A href="/editor">
-          <Button variant="primary" size="xl" rightIcon={<MoveRight class="w-5 h-5" />}>
-            Launch Editor
-          </Button>
-        </A>
-      </section>
-
-      {/* Footer */}
-      <footer class="border-t border-border bg-bg-secondary pt-24 pb-12 mt-32 relative overflow-hidden">
-        <div class="absolute inset-0 mesh-bg opacity-30 pointer-events-none" />
-        <div class="max-w-7xl mx-auto px-6 relative z-10">
-          <div class="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
-            <div class="md:col-span-5">
-              <div class="flex items-center gap-2 mb-6">
-                <div class="w-10 h-10 flex items-center justify-center bg-foreground text-background rounded-xl shadow-premium">
-                  <Zap class="w-5 h-5 fill-current" />
-                </div>
-                <span class="font-bold text-2xl tracking-tight">CodeArena</span>
-              </div>
-              <p class="text-brand-secondary text-sm leading-relaxed max-w-sm mb-8">
-                Innovative online compiler with multi-language support, beautiful themes, and powerful features. Built for the elite, by the community.
-              </p>
-              <div class="flex items-center gap-3 inline-flex px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span class="text-xs font-bold text-emerald-500 uppercase tracking-widest">All Systems Operational</span>
-              </div>
-            </div>
-
-            <div class="md:col-span-2 md:col-start-7">
-              <h4 class="font-bold mb-6 tracking-tight">Platform</h4>
-              <div class="flex flex-col gap-4 text-sm text-brand-secondary font-medium">
-                <A href="/about" class="hover:text-foreground transition-colors">About</A>
-                <A href="/editor" class="hover:text-foreground transition-colors">Editor</A>
-                <A href="/visualize" class="hover:text-foreground transition-colors">Visualise</A>
-
-              </div>
-            </div>
-
-            <div class="md:col-span-2">
-              <h4 class="font-bold mb-6 tracking-tight">Resources</h4>
-              <div class="flex flex-col gap-4 text-sm text-brand-secondary font-medium">
-                <A href="https://whimsical.com/dsa-roadmap-JegsSL6nFr1b3V25bRzpYA" class="hover:text-foreground transition-colors">DSA Roadmap</A>
-              </div>
-            </div>
-
-            <div class="md:col-span-2">
-              <h4 class="font-bold mb-6 tracking-tight">Contact</h4>
-              <div class="flex flex-col gap-4 text-sm text-brand-secondary font-medium">
-                <a href="mailto:[EMAIL_ADDRESS]" class="hover:text-foreground transition-colors">Email Me</a>
-                <a href="#" class="hover:text-foreground transition-colors">Report Bug</a>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-border/50 gap-4 text-sm font-medium text-brand-secondary">
-            <p>© 2026 CodeNinja-194. Designed with ❤️ for the community.</p>
-          </div>
-        </div>
-      </footer>
+    <div class="editor-window relative overflow-hidden rounded-2xl border border-white/10 bg-[#0c1220] text-slate-200 shadow-2xl shadow-blue-950/30">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[.025] px-4 py-3 sm:px-5">
+        <div class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-red-400"/><span class="h-2.5 w-2.5 rounded-full bg-amber-300"/><span class="h-2.5 w-2.5 rounded-full bg-emerald-400"/><span class="ml-3 font-mono text-xs text-slate-400">CodeArena / workspace</span></div>
+        <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 font-mono text-xs"><span class="text-sky-300">C++</span><ChevronRight class="h-3 w-3 rotate-90 text-slate-500"/><span class="text-slate-400">C++17</span></div>
+        <A href="/editor" class="inline-flex items-center gap-1.5 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-400"><Play class="h-3 w-3 fill-current"/> Run</A>
+      </div>
+      <div class="grid min-h-[270px] grid-cols-[54px_1fr] sm:grid-cols-[150px_1fr]">
+        <aside class="border-r border-white/10 bg-white/[.02] p-3 sm:p-4"><div class="mb-4 hidden text-[10px] font-bold uppercase tracking-widest text-slate-500 sm:block">Explorer</div><div class="flex items-center gap-2 rounded-md bg-blue-500/10 px-2 py-2 font-mono text-[11px] text-slate-300"><Code2 class="h-3.5 w-3.5 shrink-0 text-sky-400"/><span class="hidden sm:inline">main.cpp</span></div><div class="mt-5 hidden text-[10px] leading-5 text-slate-500 sm:block">WORKSPACE<br/>└── main.cpp</div></aside>
+        <div class="overflow-x-auto p-4 font-mono text-[11px] leading-[1.9] sm:p-5 sm:text-xs"><div class="min-w-[370px] space-y-0.5"><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">1</i><span class="text-violet-300">#include</span> <span class="text-emerald-300">&lt;iostream&gt;</span></div><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">2</i><span class="text-violet-300">using namespace</span> <span class="text-sky-300">std</span>;</div><div class="h-4"/><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">4</i><span class="text-violet-300">int</span> <span class="text-amber-200">main</span>() {'{'}</div><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">5</i><span class="ml-3 text-violet-300">int</span> a, b;</div><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">6</i><span class="ml-3 text-sky-200">cin</span> <span class="text-pink-300">&gt;&gt;</span> a <span class="text-pink-300">&gt;&gt;</span> b;</div><div class="h-3"/><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">8</i><span class="ml-3 text-sky-200">cout</span> <span class="text-pink-300">&lt;&lt;</span> a + b <span class="text-pink-300">&lt;&lt;</span> endl;</div><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">9</i><span class="ml-3 text-violet-300">return</span> <span class="text-orange-300">0</span>;</div><div><i class="mr-4 inline-block w-4 text-right not-italic text-slate-600">10</i>{'}'}</div></div></div>
+      </div>
+      <div class="grid gap-0 border-t border-white/10 sm:grid-cols-2">
+        <div class="border-b border-white/10 p-4 sm:border-b-0 sm:border-r sm:px-5"><div class="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500"><Terminal class="h-3 w-3"/>Standard Input</div><code class="font-mono text-sm text-slate-300">10 20</code></div>
+        <div class="p-4 sm:px-5"><div class="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500"><span>Output</span><span class="flex items-center gap-1.5 normal-case tracking-normal text-emerald-400"><span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"/>{phaseLabels[phase()]}</span></div><div class="flex items-center justify-between"><code class="font-mono text-sm text-emerald-300">30</code><span class="font-mono text-[10px] text-slate-500">14 ms · 2.4 MB</span></div></div>
+      </div>
     </div>
   );
 };
 
+const Landing = () => (
+  <div class="relative min-h-screen overflow-hidden">
+    <div class="mesh-bg"/><div class="noise"/><Navbar/>
+    <main>
+      <section class="hero-grid relative mx-auto grid max-w-7xl items-center gap-12 px-5 pb-20 pt-28 sm:px-8 sm:pt-36 lg:min-h-[760px] lg:grid-cols-[.88fr_1.12fr] lg:gap-14 lg:px-10">
+        <div class="relative z-10">
+          <div class="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[.07] px-3 py-2 text-[10px] font-bold tracking-[.12em] text-emerald-500"><span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"/>EDITOR PREVIEW · CONNECT API TO RUN</div>
+          <h1 class="max-w-xl text-5xl font-extrabold leading-[1.02] tracking-[-.055em] sm:text-6xl lg:text-[76px]">Build. Run.<br/><span class="text-accent-gradient">Master.</span></h1>
+          <p class="mt-6 max-w-xl text-base leading-7 text-brand-secondary sm:text-lg sm:leading-8">CodeArena is a powerful online coding platform where developers write, execute, debug, practice, and compete — all from one intelligent workspace.</p>
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row"><A href="/editor"><Button variant="brand" size="lg" class="w-full sm:w-auto" rightIcon={<ArrowRight class="h-4 w-4"/>}>Start Coding</Button></A><a href="#problems"><Button variant="outline" size="lg" class="w-full sm:w-auto">Explore Problems</Button></a></div>
+          <a href="https://github.com/ridhamguptaprogramming-ops/Online-Coding-Compiler" target="_blank" rel="noreferrer" class="mt-5 inline-flex items-center gap-2 text-sm font-medium text-brand-secondary transition hover:text-foreground"><Github class="h-4 w-4"/> View GitHub <ArrowRight class="h-3.5 w-3.5"/></a>
+          <div class="mt-10 grid max-w-lg grid-cols-2 gap-x-6 gap-y-5 border-t border-border pt-6 sm:grid-cols-4"><div><div class="text-xl font-bold">5+</div><div class="mt-1 text-xs text-brand-secondary">Languages</div></div><div><div class="text-xl font-bold">Real-time</div><div class="mt-1 text-xs text-brand-secondary">Execution API</div></div><div><div class="text-xl font-bold">Monaco</div><div class="mt-1 text-xs text-brand-secondary">Editor</div></div><div><div class="text-xl font-bold">Browser</div><div class="mt-1 text-xs text-brand-secondary">Workspace</div></div></div>
+        </div>
+        <div class="relative min-w-0"><div class="pointer-events-none absolute -inset-12 rounded-full bg-blue-500/[.12] blur-[90px]"/><CodePreview/><div class="absolute -bottom-5 left-3 hidden items-center gap-3 rounded-xl border border-border bg-bg-secondary/90 px-4 py-3 shadow-xl backdrop-blur sm:flex"><div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500"><Check class="h-4 w-4"/></div><div><div class="text-xs font-semibold">Execution Successful</div><div class="mt-0.5 text-[10px] text-brand-secondary">Example output · 14ms</div></div></div></div>
+      </section>
+
+      <section id="features" class="section-wrap border-y border-border bg-bg-secondary/45"><SectionTitle eyebrow="The workspace" title="Everything You Need to Code Better" body="A focused toolkit for writing, running and understanding code, with room to grow into a complete learning platform."/><div class="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3"><For each={showcase}>{(item, i)=><article class="bento-card group min-h-[208px] p-6"><div class="mb-7 flex items-center justify-between"><div class="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/15 bg-blue-500/[.08] text-accent-blue transition duration-300 group-hover:rotate-[-5deg] group-hover:scale-110"><item.icon class="h-5 w-5"/></div><span class="font-mono text-xs text-brand-muted">0{i()+1}</span></div><h3 class="text-lg font-semibold">{item.title}</h3><p class="mt-2 text-sm leading-6 text-brand-secondary">{item.body}</p><ArrowRight class="absolute bottom-6 right-6 h-4 w-4 text-brand-muted opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100"/></article>}</For></div></section>
+
+      <section class="section-wrap" id="architecture"><SectionTitle eyebrow="Under the hood" title="How CodeArena Executes Your Code" body="The editor connects to an execution API. Configure the backend URL to process submitted programs; this diagram describes that request path."/><div class="mx-auto grid max-w-5xl gap-3 md:grid-cols-5"><For each={architecture}>{(item, i)=><div class="relative"><div class="flow-card h-full rounded-2xl border border-border bg-bg-secondary p-5 text-center transition hover:-translate-y-1 hover:border-blue-500/40"><div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500"><item.icon class="h-5 w-5"/></div><div class="text-sm font-semibold">{item.title}</div><div class="mt-1 text-xs text-brand-secondary">{item.detail}</div></div>{i()<architecture.length-1&&<ArrowRight class="mx-auto my-2 h-4 w-4 text-blue-400 md:absolute md:-right-3 md:top-1/2 md:z-10 md:my-0 md:-translate-y-1/2"/>}</div>}</For></div><div class="mx-auto mt-6 flex max-w-5xl flex-wrap justify-center gap-2 text-[10px] font-mono uppercase tracking-wider text-brand-secondary"><span class="rounded-full border border-border px-3 py-1.5">Request validation</span><span class="rounded-full border border-border px-3 py-1.5">Configured service</span><span class="rounded-full border border-border px-3 py-1.5">Response mapping</span></div></section>
+
+      <section class="section-wrap border-y border-border bg-bg-secondary/45"><SectionTitle eyebrow="Execution lifecycle" title="From Code to Result" body="Watch each stage of a typical run. Live status and result details depend on the configured execution service."/><div class="mx-auto max-w-5xl rounded-2xl border border-border bg-bg-secondary p-5 sm:p-8"><div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"><For each={executionSteps}>{(step,i)=><div class="relative flex flex-col items-center text-center"><div class={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-full border text-sm font-bold transition-colors', i()===5?'border-emerald-500/30 bg-emerald-500/10 text-emerald-500':'border-blue-500/25 bg-blue-500/10 text-blue-500')}><span>{i()<5?`0${i()+1}`:<Check class="h-4 w-4"/>}</span></div><div class="text-xs font-medium">{step}</div>{i()<5&&<span class="absolute left-[calc(50%+30px)] top-5 hidden h-px w-[calc(100%-20px)] bg-gradient-to-r from-blue-500/50 to-border lg:block"/>}</div>}</For></div><div class="mt-7 rounded-xl border border-border bg-bg-tertiary/50 p-4 font-mono text-xs"><div class="flex items-center gap-2 text-emerald-500"><span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400"/> EXAMPLE RESULT</div><div class="mt-3 flex flex-wrap items-center gap-3 text-brand-secondary"><span>● QUEUED</span><ArrowRight class="h-3 w-3"/><span>● COMPILING</span><ArrowRight class="h-3 w-3"/><span>● RUNNING</span><ArrowRight class="h-3 w-3"/><span class="text-emerald-500">✓ ACCEPTED</span></div></div></div></section>
+
+      <section class="section-wrap"><div class="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[.72fr_1.28fr]"><div><div class="mb-3 text-xs font-bold uppercase tracking-[.22em] text-accent-blue">The editor</div><h2 class="text-3xl font-bold tracking-tight sm:text-4xl">One Workspace.<br/>Everything You Need.</h2><p class="mt-4 leading-7 text-brand-secondary">Move from editing to execution without losing focus. A single browser workspace brings your source, input and result together.</p><ul class="mt-7 grid grid-cols-2 gap-3 text-sm text-brand-secondary"><For each={['Monaco Editor','Multi-language support','Standard input','Execution output','Local workspace storage','Theme customization']}>{(item)=><li class="flex items-center gap-2"><Check class="h-4 w-4 text-emerald-500"/>{item}</li>}</For></ul><A href="/editor" class="mt-8 inline-flex"><Button variant="brand" rightIcon={<ArrowRight class="h-4 w-4"/>}>Open the Editor</Button></A></div><div class="min-w-0"><CodePreview/></div></div></section>
+
+      <section id="problems" class="section-wrap border-y border-border bg-bg-secondary/45"><SectionTitle eyebrow="Practice" title="Practice Problems That Build Real Skills" body="Problem cards below are illustrative previews. Problem data and acceptance rates are demo content."/><div class="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2"><For each={problems}>{(problem)=><article class="group flex flex-col justify-between rounded-2xl border border-border bg-bg-secondary p-5 transition duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-premium sm:flex-row sm:items-center sm:gap-5"><div><div class="flex flex-wrap items-center gap-3"><h3 class="font-semibold">{problem.name}</h3><span class={cn('rounded-full px-2.5 py-1 text-[10px] font-bold',problem.level==='Easy'?'bg-emerald-500/10 text-emerald-500':problem.level==='Hard'?'bg-rose-500/10 text-rose-500':'bg-amber-500/10 text-amber-600')}>{problem.level}</span></div><div class="mt-2 text-xs text-brand-secondary">{problem.topics}</div><div class="mt-2 text-[10px] text-brand-muted">{problem.rate}</div></div><A href="/editor" class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-accent-blue sm:mt-0">Solve <ArrowRight class="h-4 w-4 transition group-hover:translate-x-1"/></A></article>}</For></div></section>
+
+      <section class="section-wrap"><div class="mx-auto grid max-w-6xl items-center gap-10 rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-500/[.08] via-bg-secondary to-violet-500/[.07] p-6 sm:p-10 lg:grid-cols-2"><div><div class="mb-3 text-xs font-bold uppercase tracking-[.22em] text-accent-blue">Timed practice · Demo preview</div><h2 class="text-3xl font-bold sm:text-4xl">Compete. Improve.<br/>Climb.</h2><p class="mt-4 max-w-md leading-7 text-brand-secondary">A glimpse of a contest dashboard concept. Contest data and scores shown are examples, not live events.</p><A href="/features" class="mt-7 inline-flex"><Button variant="brand" rightIcon={<ArrowRight class="h-4 w-4"/>}>Explore Contests</Button></A></div><div class="rounded-2xl border border-border bg-bg-secondary p-5 shadow-xl sm:p-6"><div class="flex items-center justify-between border-b border-border pb-4"><div><div class="text-xs text-brand-secondary">WEEKLY CODE CHALLENGE</div><div class="mt-1 font-semibold">Contest dashboard preview</div></div><div class="rounded-lg bg-violet-500/10 px-3 py-2 font-mono text-sm text-violet-500">02:14:38</div></div><div class="grid grid-cols-2 gap-3 pt-4"><For each={[[ 'Problems','5'],['Participants','Demo'],['Current Rank','#12'],['Score','420']]}>{([label,value])=><div class="rounded-xl border border-border bg-bg-tertiary/50 p-4"><div class="text-xs text-brand-secondary">{label}</div><div class="mt-1 text-xl font-bold">{value}</div></div>}</For></div></div></div></section>
+
+      <section class="section-wrap border-y border-border bg-bg-secondary/45"><div class="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2"><div><div class="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-violet-500"><Sparkles class="h-4 w-4"/>AI-generated analysis · Demo</div><h2 class="text-3xl font-bold sm:text-4xl">Your Code Has More to Say.</h2><p class="mt-4 max-w-md leading-7 text-brand-secondary">A concept for making complexity and code-quality feedback easier to understand. This analysis is illustrative and is not connected to an AI service.</p><A href="/features" class="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-accent-blue">Explore platform features <ArrowRight class="h-4 w-4"/></A></div><div class="rounded-2xl border border-violet-500/20 bg-bg-secondary p-5 shadow-xl sm:p-7"><div class="flex items-center justify-between border-b border-border pb-5"><div class="flex items-center gap-3"><div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500"><Sparkles class="h-5 w-5"/></div><div><div class="text-sm font-semibold">Code Review</div><div class="text-[10px] text-brand-muted">AI GENERATED · DEMO</div></div></div><div class="text-2xl font-bold text-violet-500">8.7<span class="text-sm text-brand-muted">/10</span></div></div><div class="grid grid-cols-2 gap-3 py-5"><div class="rounded-xl bg-bg-tertiary/60 p-3"><div class="text-xs text-brand-secondary">Time Complexity</div><code class="mt-1 block font-mono font-semibold">O(n)</code></div><div class="rounded-xl bg-bg-tertiary/60 p-3"><div class="text-xs text-brand-secondary">Space Complexity</div><code class="mt-1 block font-mono font-semibold">O(n)</code></div></div><div class="rounded-xl border border-blue-500/15 bg-blue-500/[.05] p-4"><div class="mb-1 text-xs font-semibold text-blue-500">Potential improvement</div><p class="text-sm leading-6 text-brand-secondary">Use a hash-based lookup to reduce repeated searches.</p></div></div></div></section>
+
+      <section class="section-wrap"><SectionTitle eyebrow="Progress preview · Demo data" title="See Your Progress Take Shape" body="An example student dashboard layout. Metrics and chart values are illustrative, not account data."/><div class="mx-auto max-w-6xl"><div class="grid grid-cols-2 gap-3 lg:grid-cols-4"><For each={[[ 'Problems Solved','128'],['Success Rate','76%'],['Current Streak','14 days'],['Contest Rating','Demo']]}>{([label,value])=><div class="rounded-2xl border border-border bg-bg-secondary p-5"><div class="text-xs text-brand-secondary">{label}</div><div class="mt-2 text-2xl font-bold">{value}</div><div class="mt-4 h-1.5 overflow-hidden rounded-full bg-bg-tertiary"><div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{width:`${label==='Problems Solved'?'72':label==='Success Rate'?'76':label==='Current Streak'?'62':'48'}%`}}/></div></div>}</For></div><div class="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]"><div class="rounded-2xl border border-border bg-bg-secondary p-5"><div class="flex items-center justify-between text-sm font-semibold">Problem Progress <span class="text-[10px] font-normal text-brand-muted">DEMO</span></div><div class="mt-6 flex h-28 items-end gap-2">{[35,55,42,72,50,88,65,95,68,82,100,76,90,58,78,96].map((height,index)=><div class="flex-1 rounded-t-sm bg-gradient-to-t from-blue-600/70 to-cyan-400/80" style={{height:`${height}%`,opacity:.45+index*.03}}/>)}</div></div><div class="rounded-2xl border border-border bg-bg-secondary p-5"><div class="text-sm font-semibold">Topic Performance <span class="ml-1 text-[10px] font-normal text-brand-muted">DEMO</span></div><div class="mt-5 space-y-4"><For each={[[ 'Arrays',82],['Trees',64],['DP',42]]}>{([label,value])=><div><div class="mb-1 flex justify-between text-xs"><span>{label}</span><span class="text-brand-secondary">{value}%</span></div><div class="h-1.5 rounded-full bg-bg-tertiary"><div class="h-full rounded-full bg-violet-500" style={{width:`${value}%`}}/></div></div>}</For></div></div><div class="rounded-2xl border border-border bg-bg-secondary p-5"><div class="text-sm font-semibold">Difficulty <span class="ml-1 text-[10px] font-normal text-brand-muted">DEMO</span></div><div class="mt-5 flex items-center gap-4"><div class="h-20 w-20 rounded-full" style={{background:'conic-gradient(#10b981 0 48%, #f59e0b 48% 82%, #f43f5e 82% 100%)'}}/><div class="space-y-2 text-xs text-brand-secondary"><div>● Easy 48%</div><div>● Medium 34%</div><div>● Hard 18%</div></div></div></div></div></div></section>
+
+      <section id="languages" class="section-wrap border-y border-border bg-bg-secondary/45"><SectionTitle eyebrow="Compiler support" title="Pick a Language. Start Building." body="Languages available in the editor and execution service mapping."/><div class="mx-auto grid max-w-6xl gap-3 sm:grid-cols-2 lg:grid-cols-5"><For each={languages}>{(language)=><A href="/editor" class="group relative overflow-hidden rounded-2xl border border-border bg-bg-secondary p-5 transition duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-premium"><div class="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl transition group-hover:bg-violet-500/20"/><div class={cn('relative flex h-12 w-12 items-center justify-center rounded-xl bg-bg-tertiary font-mono text-sm font-bold',language.color)}>{language.letter}</div><div class="relative mt-5 flex items-center justify-between"><div><div class="font-semibold">{language.name}</div><div class="mt-1 font-mono text-xs text-brand-secondary">{language.ext}</div></div><ArrowRight class="h-4 w-4 text-brand-muted transition group-hover:translate-x-1 group-hover:text-blue-500"/></div><div class="relative mt-5 text-xs font-semibold text-accent-blue">Run Code →</div></A>}</For></div></section>
+
+      <section class="section-wrap"><div class="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2"><div><div class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-emerald-500">Responsible execution</div><h2 class="text-3xl font-bold sm:text-4xl">Built With Security in Mind</h2><p class="mt-4 leading-7 text-brand-secondary">Execution is delegated to an external API configured for the project. Isolation, limits and access controls depend on that backend and are not asserted here.</p><div class="mt-6 flex flex-wrap gap-2"><For each={['Request validation','30-second client timeout','Configurable API endpoint','External execution runtime']}>{(item)=><span class="rounded-full border border-border bg-bg-secondary px-3 py-2 text-xs text-brand-secondary">{item}</span>}</For></div></div><div class="rounded-2xl border border-border bg-[#0c1220] p-5 text-slate-200 sm:p-7"><div class="mb-5 text-xs font-bold uppercase tracking-widest text-slate-500">Execution boundary · conceptual</div><For each={['Student code','Request validation','Configured execution service','Result response']}>{(step,i)=><><div class="flex items-center gap-3"><div class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-300">{i()===3?<Check class="h-4 w-4"/>:<LockKeyhole class="h-4 w-4"/>}</div><div class="flex-1 rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 text-sm">{step}</div></div>{i()<3&&<div class="ml-[17px] h-5 border-l border-dashed border-blue-500/40"/>}</>}</For></div></div></section>
+
+      <section class="section-wrap border-y border-border bg-bg-secondary/45"><SectionTitle eyebrow="For every learning journey" title="Built for Students and Educators" body="A foundation for individual practice today and structured assessment workflows as the platform grows."/><div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-2"><article class="rounded-2xl border border-border bg-bg-secondary p-6 sm:p-8"><div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500"><GraduationCap class="h-6 w-6"/></div><h3 class="text-xl font-bold">For students</h3><p class="mt-2 text-sm text-brand-secondary">A repeatable path from first attempt to stronger solutions.</p><div class="mt-6 flex flex-wrap gap-2">{['Practice','Submit','Analyze','Improve'].map(item=><span class="rounded-lg bg-bg-tertiary px-3 py-2 text-xs font-medium">{item}</span>)}</div></article><article class="rounded-2xl border border-border bg-bg-secondary p-6 sm:p-8"><div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500"><Users class="h-6 w-6"/></div><h3 class="text-xl font-bold">For educators</h3><p class="mt-2 text-sm text-brand-secondary">Assessment capabilities for a growing classroom workflow.</p><div class="mt-6 flex flex-wrap gap-2">{['Create problems','Create contests','Monitor submissions','Analyze performance'].map(item=><span class="rounded-lg bg-bg-tertiary px-3 py-2 text-xs font-medium">{item}</span>)}</div></article></div><div class="mt-8 text-center"><A href="/features"><Button variant="outline" rightIcon={<ArrowRight class="h-4 w-4"/>}>Explore Assessment Platform</Button></A></div></section>
+
+      <section class="section-wrap" id="platform"><SectionTitle eyebrow="The toolkit" title="Focused Tools for Better Flow" body="A more capable editor, with the utility to keep your attention on the problem."/><div class="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3"><For each={featureGrid}>{(item)=><article class={cn('bento-card group p-6',item.large&&'sm:col-span-2 lg:col-span-2')}><div class="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" style={{background:'radial-gradient(circle at 85% 10%, rgba(59,130,246,.10), transparent 35%)'}}/><div class="relative flex items-start justify-between"><div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 transition group-hover:rotate-6"><item.icon class="h-5 w-5"/></div><ArrowRight class="h-4 w-4 text-brand-muted opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100"/></div><h3 class="relative mt-6 text-lg font-semibold">{item.title}</h3><p class="relative mt-2 max-w-md text-sm leading-6 text-brand-secondary">{item.text}</p></article>}</For></div></section>
+
+      <section class="section-wrap border-y border-border bg-bg-secondary/45"><div class="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[1fr_1.25fr]"><div><div class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-accent-blue">Open source</div><h2 class="text-3xl font-bold sm:text-4xl">Built in Public</h2><p class="mt-4 max-w-md leading-7 text-brand-secondary">Explore the code, review the implementation, and follow the project as it develops.</p><a href="https://github.com/ridhamguptaprogramming-ops/Online-Coding-Compiler" target="_blank" rel="noreferrer" class="mt-6 inline-flex"><Button variant="brand" leftIcon={<Github class="h-4 w-4"/>} rightIcon={<ArrowRight class="h-4 w-4"/>}>View GitHub Repository</Button></a></div><div class="grid gap-3 sm:grid-cols-2"><For each={[[ 'Repository','Online-Coding-Compiler'],['Contributors','See on GitHub'],['Technology stack','SolidJS · TypeScript'],['Latest update','See commit history']]}>{([label,value])=><div class="rounded-xl border border-border bg-bg-secondary p-4"><div class="text-xs text-brand-secondary">{label}</div><div class="mt-2 truncate text-sm font-semibold">{value}</div></div>}</For></div></div></section>
+
+      <section class="section-wrap"><SectionTitle eyebrow="Technology" title="Built With a Modern Web Stack"/><div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-3"><div class="rounded-2xl border border-border bg-bg-secondary p-5"><div class="mb-4 text-xs font-bold uppercase tracking-widest text-blue-500">Frontend · in project</div><div class="flex flex-wrap gap-2">{['SolidJS','TypeScript','Tailwind CSS','Monaco Editor'].map(x=><span class="rounded-lg bg-bg-tertiary px-3 py-2 text-xs">{x}</span>)}</div></div><div class="rounded-2xl border border-border bg-bg-secondary p-5"><div class="mb-4 text-xs font-bold uppercase tracking-widest text-violet-500">Execution integration</div><div class="flex flex-wrap gap-2">{['HTTP execution API','Backend URL configuration'].map(x=><span class="rounded-lg bg-bg-tertiary px-3 py-2 text-xs">{x}</span>)}</div><p class="mt-4 text-xs leading-5 text-brand-secondary">Backend implementation and data services are not included in this frontend repository.</p></div><div class="rounded-2xl border border-border bg-bg-secondary p-5"><div class="mb-4 text-xs font-bold uppercase tracking-widest text-emerald-500">UI & motion</div><div class="flex flex-wrap gap-2">{['Tailwind CSS','Lucide Solid','Motion One','Vite'].map(x=><span class="rounded-lg bg-bg-tertiary px-3 py-2 text-xs">{x}</span>)}</div></div></div></section>
+
+      <section class="px-5 pb-24 pt-10 sm:px-8"><div class="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-500/[.12] via-bg-secondary to-violet-500/[.10] px-6 py-12 text-center sm:px-12 sm:py-16"><div class="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500"><Zap class="h-6 w-6"/></div><h2 class="text-3xl font-bold tracking-tight sm:text-5xl">Your next idea starts here.</h2><p class="mx-auto mt-4 max-w-lg text-brand-secondary">Open the workspace, write your first line, and see where it takes you.</p><A href="/editor" class="mt-8 inline-flex"><Button variant="brand" size="lg" rightIcon={<ArrowRight class="h-4 w-4"/>}>Start Coding</Button></A></div></section>
+    </main>
+    <footer class="border-t border-border bg-bg-secondary"><div class="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.5fr_1fr_1fr_1fr]"><div><A href="/" class="flex items-center gap-2"><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground text-background"><Zap class="h-4 w-4 fill-current"/></span><span class="text-lg font-bold">CodeArena</span></A><p class="mt-4 max-w-xs text-sm leading-6 text-brand-secondary">Code. Compete. Master.<br/>Built for developers who love to code.</p></div><div><h3 class="mb-4 text-sm font-semibold">Product</h3><div class="flex flex-col gap-3 text-sm text-brand-secondary"><A href="#features">Features</A><A href="#problems">Problems</A><A href="/features">Contests</A><A href="/visualize">Visualizer</A><A href="/about">About</A></div></div><div><h3 class="mb-4 text-sm font-semibold">Resources</h3><div class="flex flex-col gap-3 text-sm text-brand-secondary"><A href="/docs">Documentation</A><A href="https://whimsical.com/dsa-roadmap-JegsSL6nFr1b3V25bRzpYA" target="_blank" rel="noreferrer">DSA Roadmap</A><a href="https://github.com/ridhamguptaprogramming-ops/Online-Coding-Compiler" target="_blank" rel="noreferrer">GitHub</a><A href="/about">Project details</A></div></div><div><h3 class="mb-4 text-sm font-semibold">Community</h3>
+    <div class="flex flex-col gap-3 text-sm text-brand-secondary"><a href="https://github.com/ridhamguptaprogramming-ops/Online-Coding-Compiler" target="_blank" rel="noreferrer">GitHub Repository</a><A href="/about">Contact & about</A><A href="/docs">Documentation</A></div></div></div><div class="border-t border-border"><div class="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-xs text-brand-muted sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>© 2026 CodeArena</span><span>Built for developers who love to code.</span></div></div></footer>
+  </div>
+);
 export default Landing;

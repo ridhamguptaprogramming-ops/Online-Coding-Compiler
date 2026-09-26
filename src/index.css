@@ -130,12 +130,60 @@
 }
 
 .bento-card {
-  @apply relative overflow-hidden rounded-3xl border border-border bg-bg-secondary p-8 transition-all duration-500 hover:shadow-premium hover:-translate-y-1;
+  @apply relative overflow-hidden rounded-2xl border border-border bg-bg-secondary transition-all duration-500 hover:shadow-premium hover:-translate-y-1;
+}
+
+.section-wrap {
+  @apply relative px-5 py-20 sm:px-8 sm:py-24 lg:py-28;
+}
+
+.hero-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .23;
+  background-image: linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, black, transparent 86%);
+}
+
+.editor-window {
+  background-image: radial-gradient(ellipse at 75% 0%, rgba(37, 99, 235, .13), transparent 44%);
+}
+
+.flow-card {
+  animation: flow-arrive .7s both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 70%;
+}
+
+@keyframes flow-arrive {
+  from { opacity: .4; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .section-wrap { padding-left: 1rem; padding-right: 1rem; }
 }
 
 /* Smooth Scroll */
 html {
   scroll-behavior: smooth;
+}
+
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
 }
 
 /* Custom Scrollbar */
