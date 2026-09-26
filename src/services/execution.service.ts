@@ -72,7 +72,8 @@ class ExecutionService {
     onProgress?.(10);
 
     try {
-      const response = await fetch(apiUrl, {
+      const endpoint = `${apiUrl.replace(/\/+$/, '')}/submit`;
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -92,7 +93,14 @@ class ExecutionService {
 
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
-        throw new Error(detail || `Execution service returned HTTP ${response.status}`);
+        const statusMessage = response.status === 400
+          ? 'Execution request validation failed.'
+          : response.status === 404
+            ? 'Execution endpoint not found. Check the API base URL.'
+            : response.status >= 500
+              ? 'Execution backend encountered a server error.'
+              : `Execution service returned HTTP ${response.status}.`;
+        return errorResult('SYSTEM_ERROR', detail ? `${statusMessage} ${detail}` : statusMessage, detail || statusMessage);
       }
 
       const body = await response.json();
@@ -156,7 +164,10 @@ class ExecutionService {
       }
       const message = error instanceof Error ? error.message : 'Unknown execution service error.';
       const unavailable = error instanceof TypeError || /failed to fetch|networkerror/i.test(message);
-      return errorResult('SYSTEM_ERROR', unavailable ? 'Execution service unavailable. Check the service URL and network, then try again.' : message);
+      const connectionMessage = unavailable
+        ? 'Backend connection error. Check the execution service URL and network, then try again.'
+        : message;
+      return errorResult('SYSTEM_ERROR', connectionMessage, connectionMessage);
     } finally {
       window.clearTimeout(timeoutId);
     }
