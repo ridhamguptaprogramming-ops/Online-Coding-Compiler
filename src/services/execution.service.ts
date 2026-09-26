@@ -67,26 +67,42 @@ class ExecutionService {
     }
 
     const startedAt = performance.now();
+    const executionId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `run-${Date.now()}`;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), this.timeoutMs);
     onProgress?.(10);
 
     try {
       const endpoint = `${apiUrl.replace(/(?:\/submit)+\/*$/i, '').replace(/\/+$/, '')}/submit`;
+      const payload = {
+        executionId,
+        sourceCode,
+        language: normalizedLanguage,
+        stdin,
+        executionMode: 'RUN',
+        src: sourceCode,
+        lang: normalizedLanguage,
+      };
+
+      if (import.meta.env.DEV) {
+        console.info('[CodeArena execution] request', {
+          executionId,
+          endpoint,
+          language: normalizedLanguage,
+          sourceCodeLength: sourceCode.length,
+          stdinLength: stdin.length,
+        });
+      }
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sourceCode,
-          language: normalizedLanguage,
-          stdin,
-          executionMode: 'RUN',
-          src: sourceCode,
-          lang: normalizedLanguage,
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
       onProgress?.(70);
@@ -116,6 +132,22 @@ class ExecutionService {
           ? data.error
           : typeof body?.stderr === 'string' ? body.stderr : typeof body?.error === 'string' ? body.error : '';
       const backendStatus = String(data?.status || body?.status || '').toUpperCase();
+      if (import.meta.env.DEV) {
+        console.info('[CodeArena execution] response', {
+          executionId,
+          httpStatus: response.status,
+          backendStatus: backendStatus || 'UNSPECIFIED',
+          stdoutLength: stdout.length,
+          stderrLength: stderr.length,
+          response: body,
+        });
+      }
+
+      if (backendStatus === 'INVALID REQUEST' || backendStatus === 'INVALID_REQUEST') {
+        const message = data?.output || data?.message || 'Execution backend rejected the request. Verify its request DTO field names.';
+        return errorResult('SYSTEM_ERROR', message, message);
+      }
+
       const reportedCompileError = typeof data?.compileError === 'string'
         ? data.compileError
         : typeof body?.compileError === 'string' ? body.compileError : '';
