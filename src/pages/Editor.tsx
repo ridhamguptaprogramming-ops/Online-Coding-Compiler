@@ -234,7 +234,7 @@ const EditorPage = () => {
         </main>
 
         {/* Action Panel */}
-        <Show when={showSettings || executing()}>
+        <Show when={showSettings() || executing() || Boolean(currentFile()?.output)}>
            <aside class="w-96 border-l border-border bg-bg-secondary shrink-0 animate-in fade-in slide-in-from-right-4 duration-500">
               <ExecutionPanel
                 sidebar
