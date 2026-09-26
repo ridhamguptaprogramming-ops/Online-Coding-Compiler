@@ -137,7 +137,7 @@ const EditorPage = () => {
         sourceCode,
         language,
         standardInput,
-        (p) => {
+        (p: number) => {
           setProgress(p);
           if (p >= 70 && p < 100) setExecutionStage('Running on execution service');
           if (p >= 100) setExecutionStage('Completed');

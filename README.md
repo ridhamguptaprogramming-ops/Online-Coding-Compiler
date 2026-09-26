@@ -71,5 +71,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-Designed with ❤️ for the global community by **CodeNinja-194**.
+Designed with ❤️ for the global community by **ridhamguptaprogramming-ops**.
 All Systems Operational 🟢

@@ -116,10 +116,10 @@ const Landing = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue text-[11px] font-bold tracking-widest uppercase mb-8">
+          {/* <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue text-[11px] font-bold tracking-widest uppercase mb-8">
             <Sparkles class="w-3 h-3" />
             <span>Now with Multi-Core Visualization & Premium Online Compiler</span>
-          </div>
+          </div> */}
 
           <h1 class="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-8">
             Code, Compile, Execute <br />
