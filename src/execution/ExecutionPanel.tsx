@@ -200,7 +200,7 @@ const ExecutionPanel = (props: ExecutionPanelProps) => {
                         ? props.currentFile.output
                         : props.currentFile?.exitCode === 0 && props.currentFile?.status === 'ACCEPTED'
                           ? 'Program executed successfully with no output.'
-                          : 'No stdout captured.'
+                          : ''
                     }>
                       <span class="flex items-center gap-3 text-accent-blue font-bold animate-pulse">
                         <div class="w-2 h-2 rounded-full bg-current" />

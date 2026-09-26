@@ -96,6 +96,15 @@ class ExecutionService {
         lang: config.language,
       };
 
+      console.info('[CodeArena execution] request', {
+        executionId,
+        language: config.language,
+        sourceCodeLength: sourceCode.length,
+        stdinLength: stdin.length,
+        sourceFile: config.filename,
+        runtime: config.runtime,
+      });
+
       onProgress?.(35);
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -118,10 +127,28 @@ class ExecutionService {
       onProgress?.(70);
       const body = await response.json();
       const data = body?.data ?? body;
-      const stdoutValue = data?.stdout ?? data?.output ?? body?.stdout ?? body?.output;
+      const outputValue = data?.output ?? body?.output;
+      const stdoutValue = typeof data?.stdout === 'string'
+        ? data.stdout
+        : typeof outputValue === 'string'
+          ? outputValue
+          : typeof outputValue?.stdout === 'string'
+            ? outputValue.stdout
+            : typeof body?.stdout === 'string' ? body.stdout : undefined;
       const stderrValue = data?.stderr ?? data?.error ?? body?.stderr ?? body?.error;
-      const stdout = typeof stdoutValue === 'string' ? stdoutValue : '';
+      const stdoutPresent = typeof stdoutValue === 'string';
+      const stdout = stdoutPresent ? stdoutValue : '';
       const stderr = typeof stderrValue === 'string' ? stderrValue : '';
+      console.info('[CodeArena execution] response', {
+        executionId,
+        language: config.language,
+        status: data?.status ?? body?.status ?? 'not reported',
+        compileExitCode: data?.compileExitCode ?? body?.compileExitCode ?? 'not reported',
+        processStarted: data?.processStarted ?? body?.processStarted ?? 'not reported',
+        processExitCode: data?.exitCode ?? body?.exitCode ?? 'not reported',
+        stdoutLength: stdoutPresent ? stdout.length : 'stdout field missing',
+        stderrLength: stderr.length,
+      });
       const compileError = asOptionalString(data?.compileError ?? body?.compileError) || '';
       const status = normalizeStatus(data?.status ?? body?.status);
       const exitCode = typeof data?.exitCode === 'number'
@@ -133,6 +160,21 @@ class ExecutionService {
 
       if (!finalStatus) {
         return resultError(executionId, 'SYSTEM_ERROR', 'Execution service returned no process status or exit code.');
+      }
+
+      if (!stdoutPresent) {
+        const message = 'Execution service response is missing the stdout field.';
+        return {
+          executionId,
+          status: 'SYSTEM_ERROR',
+          stdout: '',
+          stderr: stderr ? `${stderr}\n${message}` : message,
+          compileError,
+          exitCode,
+          executionTime: asOptionalString(data?.executionTime ?? data?.time ?? body?.executionTime ?? body?.time),
+          memoryUsage: asOptionalString(data?.memoryUsage ?? data?.memory ?? body?.memoryUsage ?? body?.memory),
+          message,
+        };
       }
 
       const message = asOptionalString(data?.message ?? body?.message)
