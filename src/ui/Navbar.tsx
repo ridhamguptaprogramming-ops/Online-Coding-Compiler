@@ -34,7 +34,7 @@ const Navbar = () => {
           <A href="/about" class="text-sm font-medium text-brand-secondary hover:text-foreground transition-colors">About</A>
           <A href="/editor" class="text-sm font-medium text-brand-secondary hover:text-foreground transition-colors">Editor</A>
           <A href="/visualize" class="text-sm font-medium text-brand-secondary hover:text-foreground transition-colors">Visualizer</A>
-          <a href="https://github.com/CodeNinja-194/CodeArena" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-brand-secondary hover:text-foreground transition-colors flex items-center gap-1.5"><Github class="w-3.5 h-3.5" /> GitHub</a>
+          <a href="https://github.com/ridhamguptaprogramming-ops/Online-Coding-Compiler.git" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-brand-secondary hover:text-foreground transition-colors flex items-center gap-1.5"><Github class="w-3.5 h-3.5" /> GitHub</a>
         </div>
 
         <div class="flex items-center gap-3">
