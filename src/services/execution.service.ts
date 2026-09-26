@@ -72,7 +72,7 @@ class ExecutionService {
     onProgress?.(10);
 
     try {
-      const endpoint = `${apiUrl.replace(/\/+$/, '')}/submit`;
+      const endpoint = `${apiUrl.replace(/(?:\/submit)+\/*$/i, '').replace(/\/+$/, '')}/submit`;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
