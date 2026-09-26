@@ -34,6 +34,12 @@ interface ExecutionPanelProps {
 
 const ExecutionPanel = (props: ExecutionPanelProps) => {
   const [activeTab, setActiveTab] = createSignal('output');
+  const statusLabel = (status?: string) => status
+    ? status.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : 'Idle';
+  const durationLabel = (duration?: string | null) => duration
+    ? (/\b(ms|s|sec|seconds?)\b/i.test(duration) ? duration : `${duration}s`)
+    : 'Not available';
 
   createEffect(() => {
     if (props.executing) setActiveTab('output');
@@ -189,7 +195,13 @@ const ExecutionPanel = (props: ExecutionPanelProps) => {
                   </div>
                 }>
                   <pre class="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
-                    <Show when={props.executing} fallback={props.currentFile?.output || props.currentFile?.message || 'Program executed successfully with no output.'}>
+                    <Show when={props.executing} fallback={
+                      typeof props.currentFile?.output === 'string' && props.currentFile.output.length > 0
+                        ? props.currentFile.output
+                        : props.currentFile?.exitCode === 0 && props.currentFile?.status === 'ACCEPTED'
+                          ? 'Program executed successfully with no output.'
+                          : 'No stdout captured.'
+                    }>
                       <span class="flex items-center gap-3 text-accent-blue font-bold animate-pulse">
                         <div class="w-2 h-2 rounded-full bg-current" />
                         {props.executionStage || 'Preparing execution...'}
@@ -212,8 +224,9 @@ const ExecutionPanel = (props: ExecutionPanelProps) => {
 
               <Show when={activeTab() === 'details'}>
                 <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-                  <dt class="text-brand-secondary">Status</dt><dd>{props.currentFile?.status || 'Idle'}</dd>
-                  <dt class="text-brand-secondary">Execution Time</dt><dd>{props.currentFile?.executionTime ? `${props.currentFile.executionTime}s` : 'Not available'}</dd>
+                  <dt class="text-brand-secondary">Status</dt><dd>{statusLabel(props.currentFile?.status)}</dd>
+                  <dt class="text-brand-secondary">Execution ID</dt><dd class="truncate" title={props.currentFile?.executionId || undefined}>{props.currentFile?.executionId || 'Not available'}</dd>
+                  <dt class="text-brand-secondary">Execution Time</dt><dd>{durationLabel(props.currentFile?.executionTime)}</dd>
                   <dt class="text-brand-secondary">Memory Usage</dt><dd>{props.currentFile?.memoryUsage || 'Not reported by execution service'}</dd>
                   <dt class="text-brand-secondary">Exit Code</dt><dd>{props.currentFile?.exitCode ?? 'Not reported by execution service'}</dd>
                   <dt class="text-brand-secondary">Language</dt><dd>{props.currentFile?.lang || 'Unknown'}</dd>
@@ -225,11 +238,11 @@ const ExecutionPanel = (props: ExecutionPanelProps) => {
                   <div class="space-y-1">
                     <For each={props.history}>
                       {(entry) => <button
-                        class="w-full flex items-center justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-foreground/5"
+                        class="w-full flex items-center justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-blue"
                         onClick={() => props.onSelectHistory(entry)}
                       >
-                        <span class="flex min-w-0 items-center gap-2 truncate text-xs"><History class="h-3.5 w-3.5 shrink-0 text-brand-secondary" />{entry.timestamp} · {entry.language}</span>
-                        <span class="shrink-0 text-[10px] text-brand-secondary">{entry.result.status} · {entry.result.executionTime}s</span>
+                        <span class="min-w-0 text-left"><span class="flex items-center gap-2 truncate text-xs"><History class="h-3.5 w-3.5 shrink-0 text-brand-secondary" />{entry.timestamp} · {entry.language}</span><span class="mt-1 block truncate font-mono text-[9px] text-brand-muted">ID {entry.executionId || entry.id}</span></span>
+                        <span class="shrink-0 text-right text-[10px] text-brand-secondary"><span class="block">{statusLabel(entry.result.status)}</span><span class="block">{durationLabel(entry.result.executionTime).replace('Not available', 'Duration n/a')}</span></span>
                       </button>}
                     </For>
                   </div>

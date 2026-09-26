@@ -3,73 +3,80 @@ export type ExecutionStatus =
   | 'COMPILATION_ERROR'
   | 'RUNTIME_ERROR'
   | 'TIME_LIMIT_EXCEEDED'
+  | 'MEMORY_LIMIT_EXCEEDED'
+  | 'INVALID_REQUEST'
+  | 'SERVICE_UNAVAILABLE'
   | 'SYSTEM_ERROR';
 
 export interface ExecutionResult {
+  executionId: string;
   status: ExecutionStatus;
   stdout: string;
   stderr: string;
   compileError: string;
   exitCode: number | null;
-  executionTime: string;
+  executionTime: string | null;
   memoryUsage: string | null;
   message: string;
 }
 
 type ProgressHandler = (progress: number) => void;
 
-const LANGUAGE_MAP: Record<string, string> = {
-  c: 'c',
-  cpp: 'cpp',
-  java: 'java',
-  javascript: 'javascript',
-  python: 'python3',
+/** These values describe the execution contract sent to the configured backend. */
+const LANGUAGE_CONFIG: Record<string, {
+  language: string;
+  filename: string;
+  runtime: string;
+}> = {
+  java: { language: 'java', filename: 'Main.java', runtime: 'java17' },
+  python: { language: 'python3', filename: 'main.py', runtime: 'python3' },
+  javascript: { language: 'javascript', filename: 'main.js', runtime: 'node' },
+  cpp: { language: 'cpp', filename: 'main.cpp', runtime: 'cpp17' },
+  c: { language: 'c', filename: 'main.c', runtime: 'c17' },
 };
 
 const getApiUrl = () => import.meta.env.VITE_API_URL?.trim();
+const makeId = () => typeof crypto !== 'undefined' && 'randomUUID' in crypto
+  ? crypto.randomUUID()
+  : `run-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-const errorResult = (
-  status: ExecutionStatus,
-  message: string,
-  stderr = '',
-  compileError = '',
-): ExecutionResult => ({
-  status,
-  stdout: '',
-  stderr,
-  compileError,
-  exitCode: null,
-  executionTime: '0.00',
-  memoryUsage: null,
-  message,
+const normalizeStatus = (status: unknown): ExecutionStatus | null => {
+  const value = String(status || '').trim().toUpperCase().replace(/[ -]+/g, '_');
+  if (['ACCEPTED', 'SUCCESS', 'COMPLETED', 'OK'].includes(value)) return 'ACCEPTED';
+  if (['COMPILATION_ERROR', 'COMPILE_ERROR', 'COMPILATION_FAILED'].includes(value)) return 'COMPILATION_ERROR';
+  if (['RUNTIME_ERROR', 'RUNTIME_FAILED'].includes(value)) return 'RUNTIME_ERROR';
+  if (['TIME_LIMIT_EXCEEDED', 'TIMEOUT', 'TIMED_OUT'].includes(value)) return 'TIME_LIMIT_EXCEEDED';
+  if (['MEMORY_LIMIT_EXCEEDED', 'OUT_OF_MEMORY'].includes(value)) return 'MEMORY_LIMIT_EXCEEDED';
+  if (['INVALID_REQUEST', 'BAD_REQUEST', 'VALIDATION_ERROR'].includes(value)) return 'INVALID_REQUEST';
+  if (['SERVICE_UNAVAILABLE', 'UNAVAILABLE'].includes(value)) return 'SERVICE_UNAVAILABLE';
+  if (['SYSTEM_ERROR', 'FAILED', 'ERROR'].includes(value)) return 'SYSTEM_ERROR';
+  return null;
+};
+
+const resultError = (executionId: string, status: ExecutionStatus, message: string): ExecutionResult => ({
+  executionId, status, stdout: '', stderr: message, compileError: '', exitCode: null,
+  executionTime: null, memoryUsage: null, message,
 });
+
+const asOptionalString = (value: unknown): string | null => {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return null;
+};
 
 class ExecutionService {
   private readonly timeoutMs = 30000;
 
-  async execute(
-    sourceCode: string,
-    language: string,
-    stdin: string,
-    onProgress?: ProgressHandler,
-  ): Promise<ExecutionResult> {
-    const normalizedLanguage = LANGUAGE_MAP[language];
-    if (!normalizedLanguage) {
-      return errorResult('SYSTEM_ERROR', `Unsupported language: ${language}`);
-    }
+  async execute(sourceCode: string, language: string, stdin: string, onProgress?: ProgressHandler): Promise<ExecutionResult> {
+    const executionId = makeId();
+    const config = LANGUAGE_CONFIG[language];
+    if (!config) return resultError(executionId, 'INVALID_REQUEST', `Unsupported language: ${language}`);
 
     const apiUrl = getApiUrl();
-    if (!apiUrl) {
-      return errorResult(
-        'SYSTEM_ERROR',
-        'Execution service unavailable. Configure VITE_API_URL and try again.',
-      );
+    if (!apiUrl || /your-execution-service\.example/i.test(apiUrl)) {
+      return resultError(executionId, 'SERVICE_UNAVAILABLE', 'Execution service is not configured. Set VITE_API_URL to a running execution API.');
     }
 
-    const startedAt = performance.now();
-    const executionId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `run-${Date.now()}`;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), this.timeoutMs);
     onProgress?.(10);
@@ -79,127 +86,78 @@ class ExecutionService {
       const payload = {
         executionId,
         sourceCode,
-        language: normalizedLanguage,
         stdin,
+        language: config.language,
+        filename: config.filename,
+        runtime: config.runtime,
         executionMode: 'RUN',
+        // Preserve compatibility with the existing API DTO aliases.
         src: sourceCode,
-        lang: normalizedLanguage,
+        lang: config.language,
       };
 
-      if (import.meta.env.DEV) {
-        console.info('[CodeArena execution] request', {
-          executionId,
-          endpoint,
-          language: normalizedLanguage,
-          sourceCodeLength: sourceCode.length,
-          stdinLength: stdin.length,
-        });
-      }
-
+      onProgress?.(35);
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
-      onProgress?.(70);
 
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
-        const statusMessage = response.status === 400
-          ? 'Execution request validation failed.'
-          : response.status === 404
-            ? 'Execution endpoint not found. Check the API base URL.'
-            : response.status >= 500
-              ? 'Execution backend encountered a server error.'
-              : `Execution service returned HTTP ${response.status}.`;
-        return errorResult('SYSTEM_ERROR', detail ? `${statusMessage} ${detail}` : statusMessage, detail || statusMessage);
+        const status = response.status === 400 || response.status === 422
+          ? 'INVALID_REQUEST'
+          : response.status === 503 || response.status === 502 || response.status === 404 || response.status >= 500
+            ? 'SERVICE_UNAVAILABLE'
+            : 'SYSTEM_ERROR';
+        const message = detail || (status === 'INVALID_REQUEST' ? 'Invalid execution request.' : 'Execution service unavailable.');
+        return resultError(executionId, status, message);
       }
 
+      onProgress?.(70);
       const body = await response.json();
       const data = body?.data ?? body;
-      const stdout = typeof data?.stdout === 'string'
-        ? data.stdout
-        : typeof data?.output === 'string'
-          ? data.output
-          : typeof body?.stdout === 'string' ? body.stdout : typeof body?.output === 'string' ? body.output : '';
-      const stderr = typeof data?.stderr === 'string'
-        ? data.stderr
-        : typeof data?.error === 'string'
-          ? data.error
-          : typeof body?.stderr === 'string' ? body.stderr : typeof body?.error === 'string' ? body.error : '';
-      const backendStatus = String(data?.status || body?.status || '').toUpperCase();
-      if (import.meta.env.DEV) {
-        console.info('[CodeArena execution] response', {
-          executionId,
-          httpStatus: response.status,
-          backendStatus: backendStatus || 'UNSPECIFIED',
-          stdoutLength: stdout.length,
-          stderrLength: stderr.length,
-          response: body,
-        });
+      const stdoutValue = data?.stdout ?? data?.output ?? body?.stdout ?? body?.output;
+      const stderrValue = data?.stderr ?? data?.error ?? body?.stderr ?? body?.error;
+      const stdout = typeof stdoutValue === 'string' ? stdoutValue : '';
+      const stderr = typeof stderrValue === 'string' ? stderrValue : '';
+      const compileError = asOptionalString(data?.compileError ?? body?.compileError) || '';
+      const status = normalizeStatus(data?.status ?? body?.status);
+      const exitCode = typeof data?.exitCode === 'number'
+        ? data.exitCode
+        : typeof body?.exitCode === 'number' ? body.exitCode : null;
+      const finalStatus = status
+        ?? (body?.success === true ? 'ACCEPTED' : null)
+        ?? (exitCode === 0 ? 'ACCEPTED' : exitCode !== null ? 'RUNTIME_ERROR' : null);
+
+      if (!finalStatus) {
+        return resultError(executionId, 'SYSTEM_ERROR', 'Execution service returned no process status or exit code.');
       }
 
-      if (backendStatus === 'INVALID REQUEST' || backendStatus === 'INVALID_REQUEST') {
-        const message = data?.output || data?.message || 'Execution backend rejected the request. Verify its request DTO field names.';
-        return errorResult('SYSTEM_ERROR', message, message);
-      }
-
-      const reportedCompileError = typeof data?.compileError === 'string'
-        ? data.compileError
-        : typeof body?.compileError === 'string' ? body.compileError : '';
-      const compileFailure = Boolean(reportedCompileError) || backendStatus === 'COMPILATION_ERROR' || backendStatus === 'FAILED';
-      const timeoutFailure = backendStatus === 'TIME_LIMIT_EXCEEDED';
-      const explicitFailure = body?.success === false || compileFailure || timeoutFailure || backendStatus === 'RUNTIME_ERROR' || backendStatus === 'SYSTEM_ERROR';
-
-      if (explicitFailure || stderr) {
-        const compileError = compileFailure
-          ? reportedCompileError || stderr || data?.message || 'Compilation failed.'
-          : '';
-        const status: ExecutionStatus = compileFailure
-          ? 'COMPILATION_ERROR'
-          : timeoutFailure ? 'TIME_LIMIT_EXCEEDED' : backendStatus === 'SYSTEM_ERROR' ? 'SYSTEM_ERROR' : 'RUNTIME_ERROR';
-        onProgress?.(100);
-        return {
-          status,
-          stdout,
-          stderr,
-          compileError,
-          exitCode: typeof data?.exitCode === 'number' ? data.exitCode : null,
-          executionTime: ((performance.now() - startedAt) / 1000).toFixed(2),
-          memoryUsage: typeof data?.memoryUsage === 'string' || typeof data?.memoryUsage === 'number' ? String(data.memoryUsage) : null,
-          message: compileError ? 'Compilation failed.' : data?.message || (timeoutFailure ? 'Execution exceeded the time limit.' : body?.message || 'Program reported an error.'),
-        };
-      }
-
-      if (typeof data?.stdout !== 'string' && typeof data?.output !== 'string' && typeof body?.stdout !== 'string' && typeof body?.output !== 'string') {
-        return errorResult('SYSTEM_ERROR', body?.message || 'Execution service returned an invalid response.');
-      }
+      const message = asOptionalString(data?.message ?? body?.message)
+        || (finalStatus === 'ACCEPTED'
+          ? (stdout.trim() === '' && exitCode === 0 ? 'Program executed successfully with no output.' : 'Execution completed.')
+          : finalStatus.replace(/_/g, ' '));
 
       onProgress?.(100);
       return {
-        status: 'ACCEPTED',
+        executionId,
+        status: finalStatus,
         stdout,
         stderr,
-        compileError: '',
-        exitCode: typeof data?.exitCode === 'number' ? data.exitCode : 0,
-        executionTime: ((performance.now() - startedAt) / 1000).toFixed(2),
-        memoryUsage: typeof data?.memoryUsage === 'string' || typeof data?.memoryUsage === 'number' ? String(data.memoryUsage) : null,
-        message: stdout ? 'Execution completed.' : 'Program executed successfully with no output.',
+        compileError: compileError || (finalStatus === 'COMPILATION_ERROR' ? stderr : ''),
+        exitCode,
+        executionTime: asOptionalString(data?.executionTime ?? data?.time ?? body?.executionTime ?? body?.time),
+        memoryUsage: asOptionalString(data?.memoryUsage ?? data?.memory ?? body?.memoryUsage ?? body?.memory),
+        message,
       };
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        return errorResult('TIME_LIMIT_EXCEEDED', 'Execution timed out. The execution service did not respond within 30 seconds.');
+        return resultError(executionId, 'TIME_LIMIT_EXCEEDED', 'Execution service did not respond within 30 seconds.');
       }
       const message = error instanceof Error ? error.message : 'Unknown execution service error.';
-      const unavailable = error instanceof TypeError || /failed to fetch|networkerror/i.test(message);
-      const connectionMessage = unavailable
-        ? 'Backend connection error. Check the execution service URL and network, then try again.'
-        : message;
-      return errorResult('SYSTEM_ERROR', connectionMessage, connectionMessage);
+      return resultError(executionId, 'SERVICE_UNAVAILABLE', `Execution service unavailable: ${message}`);
     } finally {
       window.clearTimeout(timeoutId);
     }

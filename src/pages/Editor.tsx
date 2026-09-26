@@ -26,7 +26,7 @@ const DEFAULT_CODES: Record<string, string> = {
   python: 'def main():\n    print("Welcome to CodeArena")\n\nif __name__ == "__main__":\n    main()',
   javascript: 'console.log("Welcome to CodeArena");',
   cpp: '#include <iostream>\n\nint main() {\n    std::cout << "Performance redefined." << std::endl;\n    return 0;\n}',
-  java: 'class Main {\n    public static void main(String[] args) {\n        System.out.println("Object oriented learning.");\n    }\n}',
+  java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Object oriented learning.");\n    }\n}',
   c: '#include <stdio.h>\n\nint main() {\n    printf("Classic C Sandbox.\\n");\n    return 0;\n}'
 };
 
@@ -130,7 +130,7 @@ const EditorPage = () => {
 
     setExecuting(true);
     setProgress(10);
-    setExecutionStage('Preparing execution');
+    setExecutionStage('Preparing...');
 
     try {
       const result = await executionService.execute(
@@ -139,7 +139,8 @@ const EditorPage = () => {
         standardInput,
         (p: number) => {
           setProgress(p);
-          if (p >= 70 && p < 100) setExecutionStage('Running on execution service');
+          if (p >= 35 && p < 70) setExecutionStage('Compiling...');
+          if (p >= 70 && p < 100) setExecutionStage('Running...');
           if (p >= 100) setExecutionStage('Completed');
         }
       );
@@ -150,13 +151,15 @@ const EditorPage = () => {
         stderr: result.stderr,
         compileError: result.compileError,
         status: result.status,
+        executionId: result.executionId,
         executionTime: result.executionTime,
         exitCode: result.exitCode,
         memoryUsage: result.memoryUsage,
         message: result.message,
       } : item));
       const historyEntry = {
-        id: Date.now(),
+        id: result.executionId,
+        executionId: result.executionId,
         timestamp: new Date().toLocaleTimeString(),
         language,
         sourceCode,
@@ -188,18 +191,23 @@ const EditorPage = () => {
   };
 
   const handleLanguageChange = (lang: string) => {
-    setFiles(prev => prev.map(f => {
-      if (f.id === activeFileId()) {
-        const ext = LANGUAGE_OPTIONS.find(l => l.value === lang)?.ext || '.txt';
-        return { 
-          ...f, 
-          lang, 
-          name: f.name.split('.')[0] + ext, 
-          code: DEFAULT_CODES[lang] || '' 
-        };
-      }
-      return f;
-    }));
+    const existingBuffer = files().find(file => file.lang === lang);
+    if (existingBuffer) {
+      setActiveFileId(existingBuffer.id);
+      return;
+    }
+
+    const option = LANGUAGE_OPTIONS.find(item => item.value === lang);
+    const id = Date.now();
+    setFiles(prev => [...prev, {
+      id,
+      name: `${lang === 'java' ? 'Main' : 'main'}${option?.ext || '.txt'}`,
+      lang,
+      code: DEFAULT_CODES[lang] || '',
+      output: '',
+      executionTime: null,
+    }]);
+    setActiveFileId(id);
   };
 
   return (
@@ -333,6 +341,7 @@ const EditorPage = () => {
                     stderr: '',
                     compileError: '',
                     status: '',
+                    executionId: '',
                     executionTime: null,
                     exitCode: null,
                     memoryUsage: null,
@@ -341,14 +350,19 @@ const EditorPage = () => {
                 }}
                 onSelectHistory={(entry) => {
                   const fileId = activeFileId();
+                  const option = LANGUAGE_OPTIONS.find(item => item.value === entry.language);
                   setFiles(prev => prev.map(item => item.id === fileId ? {
                     ...item,
                     lang: entry.language,
+                    name: entry.language === 'java'
+                      ? 'Main.java'
+                      : `main${option?.ext || '.txt'}`,
                     code: entry.sourceCode,
                     output: entry.result.stdout,
                     stderr: entry.result.stderr,
                     compileError: entry.result.compileError,
                     status: entry.result.status,
+                    executionId: entry.result.executionId || entry.executionId || entry.id,
                     executionTime: entry.result.executionTime,
                     exitCode: entry.result.exitCode,
                     memoryUsage: entry.result.memoryUsage,
