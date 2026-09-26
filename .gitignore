@@ -1,9 +1,0 @@
-node_modules/
-.next/
-out/
-.env*
-!.env.example
-**/.env.local
-*.log
-coverage/
-dist/

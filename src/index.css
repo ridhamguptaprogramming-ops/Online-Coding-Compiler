@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--bg-main);
+  --color-foreground: var(--text-primary);
+  
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  
+  --color-brand-primary: var(--primary);
+  --color-brand-secondary: var(--text-secondary);
+  --color-brand-muted: var(--text-muted);
+  
+  --color-accent-blue: #0070f3;
+  --color-accent-purple: #7928ca;
+  --color-accent-pink: #ff0080;
+  
+  --color-border: var(--border);
+  --color-border-bright: var(--border-bright);
+  
+  --font-sans: "Inter", "Outfit", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", monospace;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  
+  --shadow-premium: var(--shadow-premium);
+}
+
+:root {
+  /* High-end Light Theme (Default) */
+  --bg-main: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --primary: #000000;
+  --primary-glow: rgba(0, 0, 0, 0.05);
+  
+  --border: rgba(0, 0, 0, 0.08);
+  --border-bright: rgba(0, 0, 0, 0.15);
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.05);
+
+  --shadow-premium: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  --text-gradient-stop: #3b82f6;
+}
+
+[data-theme='dark'] {
+  --bg-main: #020617;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --primary: #ffffff;
+  --primary-glow: rgba(255, 255, 255, 0.1);
+  
+  --border: rgba(255, 255, 255, 0.1);
+  --border-bright: rgba(255, 255, 255, 0.2);
+
+  --glass-bg: rgba(2, 6, 23, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+
+  --shadow-premium: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+  --text-gradient-stop: #60a5fa;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground transition-colors duration-500 selection:bg-accent-blue/20;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Reference-inspired Mesh Backgrounds */
+.mesh-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-color: var(--bg-main);
+  background-image: 
+    radial-gradient(at 0% 0%, var(--bg-tertiary) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, var(--primary-glow) 0, transparent 50%);
+  transition: background-color 0.5s ease;
+}
+
+.noise {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0.05;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Premium Vercel-style Typography */
+.text-gradient {
+  @apply bg-gradient-to-br from-foreground to-brand-secondary bg-clip-text text-transparent;
+}
+
+.text-accent-gradient {
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-gradient-stop) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Smooth UI Components */
+.glass {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+}
+
+[data-theme='light'] .glass {
+  @apply bg-white/70 border-black/5;
+}
+
+.bento-card {
+  @apply relative overflow-hidden rounded-3xl border border-border bg-bg-secondary p-8 transition-all duration-500 hover:shadow-premium hover:-translate-y-1;
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-zinc-300 dark:bg-zinc-700 rounded-full hover:bg-zinc-400 dark:hover:bg-zinc-600;
+}

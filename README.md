@@ -1,108 +1,75 @@
-# CodeArena — Phase 1: Scaffolding, Auth & Problems
+# ⚡ CodeArena — Premium Online Compiler & Visualizer
 
-This is **Phase 1** of CodeArena, an online coding compiler and assessment platform.
+CodeArena is a high-performance, aesthetically premium online code compiler and execution visualizer built for the modern developer. It provides a zero-setup, enterprise-grade sandbox environment right in your browser, featuring a Vercel-inspired UI with sophisticated glassmorphism and real-time execution tracing.
 
-## What's in this phase
+![CodeArena Banner](https://img.shields.io/badge/CodeArena-Premium--v2.0-0070f3?style=for-the-badge&logo=codeforces)
+![SolidJS](https://img.shields.io/badge/Built%20with-SolidJS-2c4f7c?style=for-the-badge&logo=solid)
+![TailwindCSS](https://img.shields.io/badge/Styled%20with-Tailwind-38bdf8?style=for-the-badge&logo=tailwind-css)
+![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6?style=for-the-badge&logo=typescript)
 
-- Next.js 14 (App Router) + TypeScript + Tailwind CSS project, dark developer-themed UI
-- Supabase integration: Postgres schema, Row Level Security, auth helpers (browser + server + middleware)
-- Auth: email/password signup & login, Google OAuth, session-aware Navbar, protected `/dashboard` and `/admin` routes
-- Database schema for the full platform: `profiles`, `problems`, `test_cases`, `submissions`, `execution_jobs`, `user_stats`
-- Problems list page and problem detail page (description, constraints, examples) reading live from Supabase
-- Dashboard page showing user stats and recent submissions
-- Seed data with 3 sample problems
+## ✨ Core Features
 
-**Not yet included** (coming in later phases): the Monaco code editor / Run & Submit flow, the execution queue and Docker sandbox workers, hidden-test-case grading, the leaderboard, and the admin dashboard.
+### 🚀 High-Performance Editor
+- **Monaco Engine**: Powered by the same engine behind VS Code for professional-grade IntelliSense, code folding, and bracket matching.
+- **Multi-Language Support**: Write and execute code in **Java, Python 3, C++, and C**.
+- **Workspace Persistence**: Your files, themes, and font preferences are automatically synced to local storage.
+- **Tabbed Interface**: Manage multiple files simultaneously with an intuitive sidebar explorer.
 
-## Project structure
+### 🧭 Execution Visualizer
+- **Step-by-Step Tracing**: Don't just run code—watch it happen. Trace memory, variables, and stack frames dynamically.
+- **Timeline Control**: Move forward and backward through your algorithm's execution flow.
+- **Stack Registry**: Real-time visualization of function calls and recursion depths.
 
-```
-codearena/
-├── frontend/           # Next.js app
-│   ├── app/             # routes (App Router)
-│   ├── components/      # Navbar, etc.
-│   ├── lib/supabase/    # browser + server Supabase clients
-│   ├── services/        # data-fetching functions
-│   ├── types/           # shared TS types
-│   └── middleware.ts    # session refresh + route protection
-├── supabase/
-│   ├── schema.sql        # full DB schema + RLS policies
-│   └── seed.sql          # sample problems
-└── README.md
-```
+### 🌗 Adaptive Theming
+- **Global Sync**: Toggle between **Light** and **Dark** modes across the entire platform with one click.
+- **Vercel Aesthetics**: Sophisticated Slate/Dark palette with mesh gradients and soft-glow bento grids.
+- **Monaco Themes**: Specifically matched editor themes (`vs-dark` and `github-light`) for maximum readability.
 
-## Setup
+## 🛠️ Technology Stack
 
-### 1. Create a Supabase project
+- **Frontend**: [SolidJS](https://www.solidjs.com/) (Reactive & Lightweight)
+- **Editor**: [Monaco Editor](https://microsoft.github.io/monaco-editor/)
+- **Styling**: [TailwindCSS](https://tailwindcss.com/)
+- **Icons**: [Lucide Solid](https://lucide.dev/guide/packages/lucide-solid)
+- **Animations**: [Solid MotionOne](https://motion.dev/solid/quick-start)
 
-Go to [supabase.com](https://supabase.com), create a new project, and note your:
-- Project URL
-- `anon` public key
-- `service_role` key (keep this secret — server-side only)
+## 🚀 Getting Started
 
-### 2. Run the database schema
+### Prerequisites
+- Node.js 18+
+- npm or yarn
 
-In the Supabase dashboard, open the **SQL Editor** and run, in order:
+### Installation
 
-1. `supabase/schema.sql`
-2. `supabase/seed.sql` (optional, adds 3 sample problems)
+1. **Clone the Repo**
+   ```bash
+   git clone https://github.com/CodeNinja-194/CodeArena.git
+   cd CodeArena
+   ```
 
-### 3. Enable Google OAuth (optional but recommended)
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-In Supabase: **Authentication → Providers → Google**, add your Google OAuth client ID/secret. Set the redirect URL to:
+3. **Launch the Engine**
+   ```bash
+   npm run dev
+   ```
 
-```
-https://<your-project-ref>.supabase.co/auth/v1/callback
-```
+## 📂 Project Structure
 
-And in your Google Cloud Console OAuth client, add your app's callback as an authorized redirect URI:
+- `/src/pages`: Main application views (Landing, Editor, About, Visualizer).
+- `/src/editor`: Monaco wrapper and toolbar logic.
+- `/src/visualization`: Logic for tracing and rendering the execution stack.
+- `/src/services`: Abstraction for code execution and local storage management.
+- `/src/ui`: High-level UI components (Navbar, Button, Panels).
 
-```
-http://localhost:3000/auth/callback   (dev)
-https://your-domain.com/auth/callback (prod)
-```
+## 📝 License
 
-### 4. Configure environment variables
+Distributed under the MIT License. See `LICENSE` for more information.
 
-```bash
-cd frontend
-cp ../.env.example .env.local
-```
+---
 
-Fill in:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
-SUPABASE_SERVICE_ROLE_KEY=<service role key>
-```
-
-### 5. Install and run
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Visit `http://localhost:3000`.
-
-## What to try
-
-1. Sign up with email/password (check your inbox for the confirmation link) or with Google.
-2. Visit `/problems` — you should see the 3 seeded problems.
-3. Click into a problem to see its description, constraints, and examples.
-4. Visit `/dashboard` (requires login) to see your stats (all zero until Phase 3/4 grading exists).
-
-## Notes on production requirements from the original spec
-
-- **Row Level Security** is enabled on every table; hidden test cases are only visible to admins.
-- **Roles**: `profiles.role` is `student` or `admin`. Promote a user to admin manually in the Supabase table editor for now — an admin management UI comes with the Phase 5 admin dashboard.
-- The `execution_jobs`, and the `execution_time`/`memory_used`/`passed_tests` columns on `submissions`, are already in the schema so Phase 3 (execution backend) and Phase 4 (grading) can be added without a migration.
-
-## Next phases
-
-- **Phase 2** — Monaco editor page, Run/Submit/Reset/Format buttons, input/output/error panels, keyboard shortcuts, local draft persistence
-- **Phase 3** — `/api/compiler/run` + `/api/submissions`, job queue, per-language Docker sandbox images, worker process, CPU/memory/time/process limits
-- **Phase 4** — Hidden test case grading, verdicts, submission history wiring, live user stats
-- **Phase 5** — Leaderboard, admin dashboard (problem/test case CRUD, submissions/users view, platform stats)
+Designed with ❤️ for the global community by **CodeNinja-194**.
+All Systems Operational 🟢
